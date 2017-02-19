@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView mLabelGy;
     private TextView mLabelGz;
     // Orientation
+    private TextView mLabelOw;
     private TextView mLabelOx;
     private TextView mLabelOy;
     private TextView mLabelOz;
@@ -208,6 +209,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mLabelGx = (TextView)findViewById(R.id.label_gx);
         mLabelGy = (TextView)findViewById(R.id.label_gy);
         mLabelGz = (TextView)findViewById(R.id.label_gz);
+        mLabelOw = (TextView)findViewById(R.id.label_ow);
         mLabelOx = (TextView)findViewById(R.id.label_ox);
         mLabelOy = (TextView)findViewById(R.id.label_oy);
         mLabelOz = (TextView)findViewById(R.id.label_oz);
@@ -544,6 +546,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mUIHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    mLabelOw.setText(String.format(Locale.US, "%.6f", event.values[3]));
                     mLabelOx.setText(String.format(Locale.US, "%.6f", event.values[0]));
                     mLabelOy.setText(String.format(Locale.US, "%.6f", event.values[1]));
                     mLabelOz.setText(String.format(Locale.US, "%.6f", event.values[2]));

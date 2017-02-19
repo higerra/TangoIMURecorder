@@ -122,10 +122,11 @@
 
         <!-- rotation vector -->
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="@dimen/imu_number_width"
             android:layout_height="wrap_content"
+            android:id="@+id/label_ow"
             android:layout_gravity="right"
-            android:text="Orientation:"/>
+            android:text="0.000000"/>
         <TextView
             android:layout_width="@dimen/imu_number_width"
             android:layout_height="wrap_content"

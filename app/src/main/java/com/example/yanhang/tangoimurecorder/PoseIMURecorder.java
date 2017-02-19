@@ -136,7 +136,8 @@ public class PoseIMURecorder {
         long timestamp = event.timestamp;
 
         try{
-            orientation_writer_.write(String.format(Locale.US, "%d %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2]));
+            orientation_writer_.write(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f\n",
+                    timestamp, values[3], values[0], values[1], values[2]));
             orientation_writer_.flush();
         }catch (IOException e){
             e.printStackTrace();
