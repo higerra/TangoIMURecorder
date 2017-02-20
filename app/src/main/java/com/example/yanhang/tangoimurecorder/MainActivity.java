@@ -1,7 +1,9 @@
 package com.example.yanhang.tangoimurecorder;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.hardware.Camera;
 
 import android.hardware.SensorEventListener;
@@ -11,6 +13,8 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -60,6 +64,8 @@ import org.rajawali3d.scene.ASceneFrameCallback;
 public class MainActivity extends AppCompatActivity implements SensorEventListener{
 
     private static final String LOG_TAG = MainActivity.class.getName();
+    private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
+
 //    private static final int INVALID_TEXTURE_ID = 0;
 //    private static final int COLOR_CAMERA_ID = 0;
 //    private static final int FISHEYE_CAMERA_ID = 2;
@@ -149,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Boolean mIsWriteFile = true;
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
-
+    private Boolean mPermissionGranted = false;
 
 //    private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
 //    private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
@@ -232,6 +238,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume(){
         super.onResume();
+        //request permission
+        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_CODE_WRITE_EXTERNAL);
+        }else{
+            mPermissionGranted = true;
+        }
+
         mStartStopButton.setText(R.string.start_title);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_FASTEST);
@@ -240,7 +255,30 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
+        switch (requestCode){
+            case REQUEST_CODE_WRITE_EXTERNAL:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mPermissionGranted = true;
+                }
+        }
+    }
+
     private void startNewRecording(){
+        if(!mPermissionGranted){
+            // request permission
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Permission not granted")
+                    .setCancelable(false)
+                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            stopRecording();
+                        }
+                    }).show();
+            return;
+        }
         mTogglePoseButton.setEnabled(false);
         mToggleFileButton.setEnabled(false);
         if(mIsRecordingPose) {
@@ -325,10 +363,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_LOWLATENCYIMUINTEGRATION, true);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_AUTORECOVERY, true);
 
         return config;
     }
@@ -472,6 +506,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
                 if(mIsRecording.get() && mIsWriteFile) {
+                    final double nano_to_second = 1e09;
+                    long timestamp = (long)(tangoPoseData.timestamp * nano_to_second);
+                    float[] translation = tangoPoseData.getTranslationAsFloats();
+                    float[] orientation = tangoPoseData.getRotationAsFloats();
                     mRecorder.addPoseRecord(tangoPoseData);
                 }
             }
@@ -503,7 +541,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addAcclerometerRecord(event);
+                mRecorder.addIMURecord(event, PoseIMURecorder.ACCELEROMETER);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
             mUIHandler.post(new Runnable() {
@@ -515,7 +553,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addGyroscopeRecord(event);
+                mRecorder.addIMURecord(event, PoseIMURecorder.GYROSCOPE);
             }
         }
         else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
@@ -528,7 +566,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addLinerAccelerationRecord(event);
+                mRecorder.addIMURecord(event, PoseIMURecorder.LINEAR_ACCELERATION);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_GRAVITY){
             mUIHandler.post(new Runnable() {
@@ -540,7 +578,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addGravityRecord(event);
+                mRecorder.addIMURecord(event, PoseIMURecorder.GRAVITY);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
             mUIHandler.post(new Runnable() {
@@ -553,7 +591,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addOrientationRecord(event);
+                mRecorder.addIMURecord(event, PoseIMURecorder.ROTATION_VECTOR);
             }
         }
     }
