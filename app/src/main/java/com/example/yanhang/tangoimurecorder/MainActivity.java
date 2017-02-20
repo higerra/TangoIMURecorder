@@ -119,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor mGravity;
     private Sensor mLinearAcce;
     private Sensor mOrientation;
+    private Sensor mMagnetometer;
 
     // Gyroscope
     private TextView mLabelRx;
@@ -141,6 +142,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView mLabelOx;
     private TextView mLabelOy;
     private TextView mLabelOz;
+    // Magnetometer
+    private TextView mLabelMx;
+    private TextView mLabelMy;
+    private TextView mLabelMz;
 
 
     private Button mStartStopButton;
@@ -202,6 +207,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mGravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         mLinearAcce = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
         mLabelRx = (TextView)findViewById(R.id.label_rx);
         mLabelRy = (TextView)findViewById(R.id.label_ry);
@@ -219,6 +225,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mLabelOx = (TextView)findViewById(R.id.label_ox);
         mLabelOy = (TextView)findViewById(R.id.label_oy);
         mLabelOz = (TextView)findViewById(R.id.label_oz);
+        mLabelMx = (TextView)findViewById(R.id.label_mx);
+        mLabelMy = (TextView)findViewById(R.id.label_my);
+        mLabelMz = (TextView)findViewById(R.id.label_mz);
+
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
         mTogglePoseButton = (ToggleButton)findViewById(R.id.toggle_pose);
         mToggleFileButton = (ToggleButton)findViewById(R.id.toggle_file);
@@ -233,6 +243,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.unregisterListener(this, mGravity);
         mSensorManager.unregisterListener(this, mLinearAcce);
         mSensorManager.unregisterListener(this, mOrientation);
+        mSensorManager.unregisterListener(this, mMagnetometer);
     }
 
     @Override
@@ -253,6 +264,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.registerListener(this, mGravity, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mLinearAcce, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
@@ -592,6 +604,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             });
             if(mIsRecording.get() && mIsWriteFile){
                 mRecorder.addIMURecord(event, PoseIMURecorder.ROTATION_VECTOR);
+            }
+        }else if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
+            mUIHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mLabelMx.setText(String.format(Locale.US, "%.6f", event.values[0]));
+                    mLabelMy.setText(String.format(Locale.US, "%.6f", event.values[1]));
+                    mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
+                }
+            });
+            if(mIsRecording.get() && mIsWriteFile){
+                mRecorder.addIMURecord(event, PoseIMURecorder.MAGNETOMETER);
             }
         }
     }

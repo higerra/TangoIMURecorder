@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ public class PoseIMURecorder {
     public static final int TANGO_POSE = 6;
 
     private BufferedWriter[] file_writers_ = new BufferedWriter[SENSOR_COUNT];
-    // private Vector<Vector<String>> data_buffers_ = new Vector<Vector<String> >();
+    //private Vector<Vector<String> > data_buffers_ = new Vector<>();
     private String[] default_file_names_ = {"gyro.txt", "acce.txt", "magnet.txt", "linacce.txt",
             "gravity.txt", "orientation.txt", "pose.txt"};
 
@@ -60,17 +61,20 @@ public class PoseIMURecorder {
         }
     }
 
-    private void writeBufferToFile(FileWriter writer, Vector<String> buffer) throws IOException{
+    private void writeBufferToFile(Writer writer, Vector<String> buffer) throws IOException{
         for (String line : buffer) {
             writer.write(line);
         }
+        //writer.flush();
         writer.close();
     }
 
     public void endFiles(){
         try {
             for(int i=0; i<SENSOR_COUNT; ++i){
-                //writeBufferToFile(file_writers_[i], data_buffers_.get(i));
+//                writeBufferToFile(file_writers_[i], data_buffers_.get(i));
+                Log.i(LOG_TAG, "Closing files");
+                file_writers_[i].flush();
                 file_writers_[i].close();
             }
         }catch (IOException e){
@@ -80,6 +84,7 @@ public class PoseIMURecorder {
 
     public Boolean addRecord(long timestamp, float[] record, int kBins, int type){
         if(type < 0 && type > SENSOR_COUNT){
+            Log.w(LOG_TAG, "Wrong Sensor type!");
             return false;
         }
         try{
@@ -95,22 +100,23 @@ public class PoseIMURecorder {
             return false;
         }
     }
-    public Boolean addIMURecord(SensorEvent event, int type){
-        if(type < 0 && type >= SENSOR_COUNT){
+    public Boolean addIMURecord(SensorEvent event, int type) {
+        if (type < 0 && type >= SENSOR_COUNT) {
+            Log.w(LOG_TAG, "Wrong Sensor type!");
             return false;
         }
         float[] values = event.values;
         long timestamp = event.timestamp;
         try {
-            if (type == ROTATION_VECTOR ) {
-                //data_buffers_.get(type).add(String.format(Locale.US,"%d %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2]));
-                file_writers_[type].write(String.format(Locale.US,"%d %.6f %.6f %.6f %.6f\n",
-                        timestamp, values[3], values[0], values[1], values[2]));
-            }else{
-                //data_buffers_.get(type).add(String.format(Locale.US,"%d %.6f %.6f %.6f %.6f\n", timestamp, values[3], values[0], values[1], values[2]));
+            if (type == ROTATION_VECTOR) {
+                //data_buffers_.get(type).add(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2], values[3]));
+                file_writers_[type].write(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f\n",
+                        timestamp, values[0], values[1], values[2], values[3]));
+            } else {
+                //data_buffers_.get(type).add(String.format(Locale.US, "%d %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2]));
                 file_writers_[type].write(String.format(Locale.US, "%d %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2]));
-
             }
+            //file_writers_[type].flush();
             return true;
         }catch(IOException e){
             e.printStackTrace();
@@ -119,7 +125,6 @@ public class PoseIMURecorder {
     }
 
     public Boolean addPoseRecord(TangoPoseData new_pose){
-        StringBuilder builder = new StringBuilder();
         float[] translation = new_pose.getTranslationAsFloats();
         float[] rotation = new_pose.getRotationAsFloats();
         try {
@@ -130,6 +135,10 @@ public class PoseIMURecorder {
         }catch (IOException e){
             e.printStackTrace();
         }
+//        data_buffers_.get(TANGO_POSE).add(String.format(Locale.US,
+//                    "%d %.6f %.6f %.6f %.6f %.6f %.6f %.6f\n", (long)(new_pose.timestamp * mulNanoToSec),
+//                    translation[0], translation[1], translation[2],
+//                    rotation[0], rotation[1], rotation[2], rotation[3]));
         return true;
     }
 

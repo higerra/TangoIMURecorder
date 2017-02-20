@@ -120,6 +120,30 @@
             android:id="@+id/label_gz"
             android:text="0.000000"/>
 
+        <!-- Magnetometer -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Magnet:"/>
+        <TextView
+            android:layout_width="@dimen/imu_number_width"
+            android:layout_height="wrap_content"
+            android:id="@+id/label_mx"
+            android:layout_gravity="right"
+            android:text="0.000000"/>
+        <TextView
+            android:layout_width="@dimen/imu_number_width"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:id="@+id/label_my"
+            android:text="0.000000"/>
+        <TextView
+            android:layout_width="@dimen/imu_number_width"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:id="@+id/label_mz"
+            android:text="0.000000"/>
         <!-- rotation vector -->
         <TextView
             android:layout_width="@dimen/imu_number_width"
