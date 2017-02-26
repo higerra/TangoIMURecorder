@@ -32,8 +32,8 @@ import javax.microedition.khronos.opengles.GL10;
 /**
  * A simple OpenGL renderer that renders the Tango RGB camera texture on a full-screen background.
  */
-public class HelloVideoRenderer implements GLSurfaceView.Renderer {
-    private static final String TAG = HelloVideoRenderer.class.getSimpleName();
+public class TangoVideoRenderer implements GLSurfaceView.Renderer {
+    private static final String TAG = TangoVideoRenderer.class.getSimpleName();
 
     private final String vss =
             "attribute vec2 vPosition;\n" +
@@ -78,7 +78,7 @@ public class HelloVideoRenderer implements GLSurfaceView.Renderer {
     private int mProgram;
     private RenderCallback mRenderCallback;
 
-    public HelloVideoRenderer(RenderCallback callback) {
+    public TangoVideoRenderer(RenderCallback callback) {
         mRenderCallback = callback;
         mTextures[0] = 0;
         // Vertex positions.
@@ -149,7 +149,6 @@ public class HelloVideoRenderer implements GLSurfaceView.Renderer {
 
         // Call application-specific code that needs to run on the OpenGL thread
         mRenderCallback.preRender();
-
         GLES20.glUseProgram(mProgram);
 
         // Don't write depth buffer because we want to draw the camera as background

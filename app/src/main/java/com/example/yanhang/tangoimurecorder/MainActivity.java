@@ -9,7 +9,6 @@ import android.hardware.Camera;
 import android.hardware.SensorEventListener;
 import android.hardware.display.DisplayManager;
 import android.opengl.GLSurfaceView;
-import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +24,7 @@ import android.view.Display;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -66,9 +66,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final String LOG_TAG = MainActivity.class.getName();
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
 
-//    private static final int INVALID_TEXTURE_ID = 0;
-//    private static final int COLOR_CAMERA_ID = 0;
-//    private static final int FISHEYE_CAMERA_ID = 2;
+    private static final int INVALID_TEXTURE_ID = 0;
+    int rendered_texture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
+    private static final int COLOR_CAMERA_ID = 0;
+    private static final int FISHEYE_CAMERA_ID = 2;
 
     private final Handler mUIHandler = new Handler(Looper.getMainLooper());
 
@@ -151,8 +152,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Button mStartStopButton;
     private ToggleButton mTogglePoseButton;
     private ToggleButton mToggleFileButton;
-//    private GLSurfaceView mVideoSurfaceView;
-//    private HelloVideoRenderer mVideoRenderer;
+    private GLSurfaceView mVideoSurfaceView;
+    private TangoVideoRenderer mVideoRenderer;
 
     private int mCameraToDisplayRotation = 0;
 
@@ -162,8 +163,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
     private Boolean mPermissionGranted = false;
 
-//    private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
-//    private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
+    private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
+    private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -174,7 +175,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSurfaceView = (RajawaliSurfaceView) findViewById(R.id.gl_surface_view);
         mRenderer = new MotionRajawaliRenderer(this);
 
-        //mVideoSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface_view);
+        mVideoSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface_view);
+        mVideoSurfaceView.setZOrderOnTop(true);
 
         setupRenderer();
 
@@ -375,7 +377,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-
+        config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
         return config;
     }
 
@@ -445,32 +447,33 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         mSurfaceView.setSurfaceRenderer(mRenderer);
 
-//        // camera renderer
-//        mVideoSurfaceView.setEGLContextClientVersion(2);
-//        mVideoRenderer = new HelloVideoRenderer(new HelloVideoRenderer.RenderCallback() {
-//            @Override
-//            public void preRender() {
-//                if(!mIsConnected.get()){
-//                    return;
-//                }
-//
-//                try{
-//                    synchronized (MainActivity.this) {
-//                        if (mConnectedTextureIdGlThread == INVALID_TEXTURE_ID) {
-//                            mConnectedTextureIdGlThread = mVideoRenderer.getTextureId();
-//                            mTango.connectTextureId(TangoCameraIntrinsics.TANGO_CAMERA_COLOR, mVideoRenderer.getTextureId());
-//                        }
-//
-//                        if (mIsFrameAvailableTangoThread.compareAndSet(true, false)) {
-//                            mTango.updateTexture(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
-//                        }
-//                    }
-//                }catch (Exception e){
-//                    e.printStackTrace();
-//                }
-//            }
-//        });
-//        mVideoSurfaceView.setRenderer(mVideoRenderer);
+        // camera renderer
+        mVideoSurfaceView.setEGLContextClientVersion(2);
+        mVideoRenderer = new TangoVideoRenderer(new TangoVideoRenderer.RenderCallback() {
+
+            @Override
+            public void preRender() {
+                if(!mIsConnected.get()){
+                    return;
+                }
+
+                try{
+                    synchronized (MainActivity.this) {
+                        if (mConnectedTextureIdGlThread == INVALID_TEXTURE_ID) {
+                            mConnectedTextureIdGlThread = mVideoRenderer.getTextureId();
+                            mTango.connectTextureId(rendered_texture, mVideoRenderer.getTextureId());
+                        }
+
+                        if (mIsFrameAvailableTangoThread.compareAndSet(true, false)) {
+                            mTango.updateTexture(rendered_texture);
+                        }
+                    }
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        });
+        mVideoSurfaceView.setRenderer(mVideoRenderer);
 
     }
 
@@ -523,6 +526,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     float[] translation = tangoPoseData.getTranslationAsFloats();
                     float[] orientation = tangoPoseData.getRotationAsFloats();
                     mRecorder.addPoseRecord(tangoPoseData);
+                }
+            }
+
+            @Override
+            public void onFrameAvailable(int cameraID){
+
+                if(cameraID == rendered_texture){
+                    if(mVideoSurfaceView.getRenderMode() != GLSurfaceView.RENDERMODE_WHEN_DIRTY){
+                        mVideoSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+                    }
+
+                    mIsFrameAvailableTangoThread.set(true);
+                    mVideoSurfaceView.requestRender();
                 }
             }
 

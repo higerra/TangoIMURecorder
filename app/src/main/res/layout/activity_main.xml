@@ -11,6 +11,13 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
 
+    <android.opengl.GLSurfaceView
+        android:id="@+id/video_surface_view"
+        android:layout_width="@dimen/video_width"
+        android:layout_height="@dimen/video_height"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"/>
+
     <GridLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -172,12 +179,6 @@
 
     </GridLayout>
 
-    <!--<android.opengl.GLSurfaceView-->
-        <!--android:id="@+id/video_surface_view"-->
-        <!--android:layout_width="@dimen/video_width"-->
-        <!--android:layout_height="@dimen/video_height"-->
-        <!--android:layout_alignParentStart="true"-->
-        <!--android:layout_alignParentTop="true"/>-->
 
     <Button
         android:layout_width="wrap_content"
@@ -218,8 +219,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:onClick="tooglePoseRecording"/>
+            android:onClick="toogleFileWriting"/>
     </LinearLayout>
+
 
 
     <com.google.atap.tango.ux.TangoUxLayout
