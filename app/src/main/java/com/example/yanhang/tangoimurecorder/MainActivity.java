@@ -67,15 +67,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
 
     private static final int INVALID_TEXTURE_ID = 0;
-    int rendered_texture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
-    private static final int COLOR_CAMERA_ID = 0;
-    private static final int FISHEYE_CAMERA_ID = 2;
+//    int mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
+
+    int mRenderedTexture = -1;
 
     private final Handler mUIHandler = new Handler(Looper.getMainLooper());
 
     private Tango mTango;
     private TangoConfig mTangoConfig;
     private TangoUx mTangoUx;
+
     private UxExceptionEventListener mUxExceptionEventListener = new UxExceptionEventListener() {
         @Override
         public void onUxExceptionEvent(UxExceptionEvent uxExceptionEvent) {
@@ -148,12 +149,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView mLabelMy;
     private TextView mLabelMz;
 
+    static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
     private Button mStartStopButton;
     private ToggleButton mTogglePoseButton;
     private ToggleButton mToggleFileButton;
-    private GLSurfaceView mVideoSurfaceView;
-    private TangoVideoRenderer mVideoRenderer;
+//    private GLSurfaceView mVideoSurfaceView;
+//    private TangoVideoRenderer mVideoRenderer;
 
     private int mCameraToDisplayRotation = 0;
 
@@ -175,8 +177,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSurfaceView = (RajawaliSurfaceView) findViewById(R.id.gl_surface_view);
         mRenderer = new MotionRajawaliRenderer(this);
 
-        mVideoSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface_view);
-        mVideoSurfaceView.setZOrderOnTop(true);
+//        mVideoSurfaceView = (GLSurfaceView) findViewById(R.id.video_surface_view);
+//        mVideoSurfaceView.setZOrderOnTop(true);
 
         setupRenderer();
 
@@ -208,7 +210,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mGravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         mLinearAcce = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        //mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        mOrientation = mSensorManager.getDefaultSensor(ROTATION_SENSOR);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
         mLabelRx = (TextView)findViewById(R.id.label_rx);
@@ -246,6 +249,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.unregisterListener(this, mLinearAcce);
         mSensorManager.unregisterListener(this, mOrientation);
         mSensorManager.unregisterListener(this, mMagnetometer);
+
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
@@ -267,6 +272,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.registerListener(this, mLinearAcce, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+
+        // prevent screen lock
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
@@ -331,8 +339,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         mIsRecording.set(true);
-        // prevent screen lock
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void stopRecording(){
@@ -353,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         mTogglePoseButton.setEnabled(true);
         mToggleFileButton.setEnabled(true);
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
     }
 
     public void startStopRecording(View view){
@@ -372,12 +378,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void toogleFileWriting(View view) {
         mIsWriteFile = mToggleFileButton.isChecked();
     }
+    public void switchCamera(View view){
+        if(mRenderedTexture == TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE){
+            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_COLOR;
+        }else{
+            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
+        }
+    }
 
     private TangoConfig setupTangoConfig(Tango tango){
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
+        // config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
         return config;
     }
 
@@ -446,34 +459,34 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
 
         mSurfaceView.setSurfaceRenderer(mRenderer);
-
-        // camera renderer
-        mVideoSurfaceView.setEGLContextClientVersion(2);
-        mVideoRenderer = new TangoVideoRenderer(new TangoVideoRenderer.RenderCallback() {
-
-            @Override
-            public void preRender() {
-                if(!mIsConnected.get()){
-                    return;
-                }
-
-                try{
-                    synchronized (MainActivity.this) {
-                        if (mConnectedTextureIdGlThread == INVALID_TEXTURE_ID) {
-                            mConnectedTextureIdGlThread = mVideoRenderer.getTextureId();
-                            mTango.connectTextureId(rendered_texture, mVideoRenderer.getTextureId());
-                        }
-
-                        if (mIsFrameAvailableTangoThread.compareAndSet(true, false)) {
-                            mTango.updateTexture(rendered_texture);
-                        }
-                    }
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-            }
-        });
-        mVideoSurfaceView.setRenderer(mVideoRenderer);
+//
+//        // camera renderer
+//        mVideoSurfaceView.setEGLContextClientVersion(2);
+//        mVideoRenderer = new TangoVideoRenderer(new TangoVideoRenderer.RenderCallback() {
+//
+//            @Override
+//            public void preRender() {
+//                if(!mIsConnected.get()){
+//                    return;
+//                }
+//
+//                try{
+//                    synchronized (MainActivity.this) {
+//                        if (mConnectedTextureIdGlThread == INVALID_TEXTURE_ID) {
+//                            mConnectedTextureIdGlThread = mVideoRenderer.getTextureId();
+//                            mTango.connectTextureId(mRenderedTexture, mVideoRenderer.getTextureId());
+//                        }
+//
+//                        if (mIsFrameAvailableTangoThread.compareAndSet(true, false)) {
+//                            mTango.updateTexture(mRenderedTexture);
+//                        }
+//                    }
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//            }
+//        });
+//        mVideoSurfaceView.setRenderer(mVideoRenderer);
 
     }
 
@@ -521,26 +534,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
                 if(mIsRecording.get() && mIsWriteFile) {
-                    final double nano_to_second = 1e09;
-                    long timestamp = (long)(tangoPoseData.timestamp * nano_to_second);
-                    float[] translation = tangoPoseData.getTranslationAsFloats();
-                    float[] orientation = tangoPoseData.getRotationAsFloats();
+//                    final double nano_to_second = 1e09;
+//                    long timestamp = (long)(tangoPoseData.timestamp * nano_to_second);
+//                    float[] translation = tangoPoseData.getTranslationAsFloats();
+//                    float[] orientation = tangoPoseData.getRotationAsFloats();
                     mRecorder.addPoseRecord(tangoPoseData);
                 }
             }
 
-            @Override
-            public void onFrameAvailable(int cameraID){
-
-                if(cameraID == rendered_texture){
-                    if(mVideoSurfaceView.getRenderMode() != GLSurfaceView.RENDERMODE_WHEN_DIRTY){
-                        mVideoSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-                    }
-
-                    mIsFrameAvailableTangoThread.set(true);
-                    mVideoSurfaceView.requestRender();
-                }
-            }
+//            @Override
+//            public void onFrameAvailable(int cameraID){
+//                if(cameraID == mRenderedTexture){
+//                    if(mVideoSurfaceView.getRenderMode() != GLSurfaceView.RENDERMODE_WHEN_DIRTY){
+//                        mVideoSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+//                    }
+//
+//                    mIsFrameAvailableTangoThread.set(true);
+//                    mVideoSurfaceView.requestRender();
+//                }
+//            }
 
             @Override
             public void onTangoEvent(TangoEvent tangoEvent) {
@@ -559,6 +571,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(final SensorEvent event){
+        long timestamp = event.timestamp;
+        float[] values = {0.0f, 0.0f, 0.0f, 0.0f};
         if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
             mUIHandler.post(new Runnable() {
                 @Override
@@ -569,7 +583,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.ACCELEROMETER);
+                System.arraycopy(event.values, 0, values, 0, 3);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ACCELEROMETER);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
             mUIHandler.post(new Runnable() {
@@ -581,7 +596,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.GYROSCOPE);
+                System.arraycopy(event.values, 0, values, 0, 3);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.GYROSCOPE);
             }
         }
         else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
@@ -594,44 +610,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.LINEAR_ACCELERATION);
+                System.arraycopy(event.values, 0, values, 0, 3);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.LINEAR_ACCELERATION);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_GRAVITY){
-            mUIHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mLabelGx.setText(String.format(Locale.US, "%.6f", event.values[0]));
-                    mLabelGy.setText(String.format(Locale.US, "%.6f", event.values[1]));
-                    mLabelGz.setText(String.format(Locale.US, "%.6f", event.values[2]));
-                }
-            });
+//            mUIHandler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    mLabelGx.setText(String.format(Locale.US, "%.6f", event.values[0]));
+//                    mLabelGy.setText(String.format(Locale.US, "%.6f", event.values[1]));
+//                    mLabelGz.setText(String.format(Locale.US, "%.6f", event.values[2]));
+//                }
+//            });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.GRAVITY);
+                System.arraycopy(event.values, 0, values, 0, 3);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.GRAVITY);
             }
-        }else if(event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-            mUIHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mLabelOw.setText(String.format(Locale.US, "%.6f", event.values[3]));
-                    mLabelOx.setText(String.format(Locale.US, "%.6f", event.values[0]));
-                    mLabelOy.setText(String.format(Locale.US, "%.6f", event.values[1]));
-                    mLabelOz.setText(String.format(Locale.US, "%.6f", event.values[2]));
-                }
-            });
+        }else if(event.sensor.getType() == ROTATION_SENSOR){
+//            mUIHandler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    mLabelOw.setText(String.format(Locale.US, "%.6f", event.values[3]));
+//                    mLabelOx.setText(String.format(Locale.US, "%.6f", event.values[0]));
+//                    mLabelOy.setText(String.format(Locale.US, "%.6f", event.values[1]));
+//                    mLabelOz.setText(String.format(Locale.US, "%.6f", event.values[2]));
+//                }
+//            });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.ROTATION_VECTOR);
+                System.arraycopy(event.values, 0, values, 0, 4);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ROTATION_VECTOR);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
-            mUIHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mLabelMx.setText(String.format(Locale.US, "%.6f", event.values[0]));
-                    mLabelMy.setText(String.format(Locale.US, "%.6f", event.values[1]));
-                    mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
-                }
-            });
+//            mUIHandler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    mLabelMx.setText(String.format(Locale.US, "%.6f", event.values[0]));
+//                    mLabelMy.setText(String.format(Locale.US, "%.6f", event.values[1]));
+//                    mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
+//                }
+//            });
             if(mIsRecording.get() && mIsWriteFile){
-                mRecorder.addIMURecord(event, PoseIMURecorder.MAGNETOMETER);
+                System.arraycopy(event.values, 0, values, 0, 3);
+                mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.MAGNETOMETER);
             }
         }
     }

@@ -100,13 +100,11 @@ public class PoseIMURecorder {
             return false;
         }
     }
-    public Boolean addIMURecord(SensorEvent event, int type) {
+    public Boolean addIMURecord(long timestamp, float[] values, int type) {
         if (type < 0 && type >= SENSOR_COUNT) {
             Log.w(LOG_TAG, "Wrong Sensor type!");
             return false;
         }
-        float[] values = event.values;
-        long timestamp = event.timestamp;
         try {
             if (type == ROTATION_VECTOR) {
                 //data_buffers_.get(type).add(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f\n", timestamp, values[0], values[1], values[2], values[3]));
