@@ -40,6 +40,8 @@ import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
 import com.google.atap.tangoservice.TangoEvent;
+import com.google.atap.tangoservice.TangoInvalidException;
+import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoPointCloudData;
 import com.google.atap.tangoservice.TangoXyzIjData;
@@ -65,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private static final String LOG_TAG = MainActivity.class.getName();
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
+    private static final int REQUEST_CODE_CAMERA = 1002;
 
     private static final int INVALID_TEXTURE_ID = 0;
 //    int mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
@@ -154,6 +157,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Button mStartStopButton;
     private ToggleButton mTogglePoseButton;
     private ToggleButton mToggleFileButton;
+
 //    private GLSurfaceView mVideoSurfaceView;
 //    private TangoVideoRenderer mVideoRenderer;
 
@@ -163,7 +167,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Boolean mIsWriteFile = true;
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
-    private Boolean mPermissionGranted = false;
+    private Boolean mStoragePermissionGranted = false;
+    private Boolean mCameraPermissionGranted = false;
 
     private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
     private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
@@ -262,7 +267,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST_CODE_WRITE_EXTERNAL);
         }else{
-            mPermissionGranted = true;
+            mStoragePermissionGranted = true;
+        }
+
+        permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
+        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
+                    REQUEST_CODE_CAMERA);
+        }else{
+            mCameraPermissionGranted = true;
         }
 
         mStartStopButton.setText(R.string.start_title);
@@ -282,13 +295,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         switch (requestCode){
             case REQUEST_CODE_WRITE_EXTERNAL:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    mPermissionGranted = true;
+                    mStoragePermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_CAMERA:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    mCameraPermissionGranted = true;
                 }
         }
     }
 
     private void startNewRecording(){
-        if(!mPermissionGranted){
+        if(!mStoragePermissionGranted){
             // request permission
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Permission not granted")
@@ -301,6 +319,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     }).show();
             return;
         }
+        if(!mCameraPermissionGranted){
+            // request permission
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Camera permission not granted")
+                    .setCancelable(false)
+                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            stopRecording();
+                        }
+                    }).show();
+            return;
+        }
+
         mTogglePoseButton.setEnabled(false);
         mToggleFileButton.setEnabled(false);
         if(mIsRecordingPose) {
@@ -310,11 +342,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 @Override
                 public void run() {
                     synchronized (MainActivity.this) {
-                        TangoSupport.initialize();
-                        mTangoConfig = setupTangoConfig(mTango);
-                        mTango.connect(mTangoConfig);
-                        startupTango();
-                        mIsConnected.set(true);
+                        try {
+                            TangoSupport.initialize();
+                            mTangoConfig = setupTangoConfig(mTango);
+                            mTango.connect(mTangoConfig);
+                            startupTango();
+                            mIsConnected.set(true);
+                        }catch(TangoOutOfDateException e){
+                            Log.e(LOG_TAG, "Out of date");
+                        }catch(TangoErrorException e){
+                            Log.e(LOG_TAG, "Tango error");
+                        }catch(TangoInvalidException e){
+                            Log.e(LOG_TAG,"Tango exception");
+                        }
                     }
                 }
             });
@@ -349,6 +389,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (mIsRecordingPose) {
             synchronized (this) {
                 try {
+//                    mTango.disconnectCamera(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
+//                    mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
                     mTangoUx.stop();
                     mTango.disconnect();
                 } catch (Exception e) {
@@ -379,18 +421,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mIsWriteFile = mToggleFileButton.isChecked();
     }
     public void switchCamera(View view){
-        if(mRenderedTexture == TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE){
-            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_COLOR;
-        }else{
-            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
-        }
+//        if(mRenderedTexture == TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE){
+//            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_COLOR;
+//        }else{
+//            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
+//        }
     }
 
     private TangoConfig setupTangoConfig(Tango tango){
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        // config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
+        config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
         return config;
     }
 
@@ -459,7 +501,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         });
 
         mSurfaceView.setSurfaceRenderer(mRenderer);
-//
+
 //        // camera renderer
 //        mVideoSurfaceView.setEGLContextClientVersion(2);
 //        mVideoRenderer = new TangoVideoRenderer(new TangoVideoRenderer.RenderCallback() {
@@ -527,9 +569,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 TangoPoseData.COORDINATE_FRAME_DEVICE
         ));
 
-        mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
+        mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {
+                Log.i(LOG_TAG, "pose available");
                 if(mTangoUx != null){
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
@@ -542,8 +585,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             }
 
-//            @Override
-//            public void onFrameAvailable(int cameraID){
+            @Override
+            public void onFrameAvailable(int cameraID){
+//                Log.i(LOG_TAG, "onFrameAvailable called");
 //                if(cameraID == mRenderedTexture){
 //                    if(mVideoSurfaceView.getRenderMode() != GLSurfaceView.RENDERMODE_WHEN_DIRTY){
 //                        mVideoSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
@@ -552,7 +596,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //                    mIsFrameAvailableTangoThread.set(true);
 //                    mVideoSurfaceView.requestRender();
 //                }
-//            }
+            }
+
+            @Override
+            public void onXyzIjAvailable(TangoXyzIjData xyzIj){
+
+            }
+
+            @Override
+            public void onPointCloudAvailable(final TangoPointCloudData pointCloudData){
+
+            }
+
 
             @Override
             public void onTangoEvent(TangoEvent tangoEvent) {
