@@ -2,7 +2,10 @@ package com.example.yanhang.tangoimurecorder;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.DialogInterface;
+import android.content.IntentFilter;
+import android.content.PeriodicSync;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 
@@ -12,6 +15,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.BoolRes;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +25,9 @@ import android.hardware.SensorEvent;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.view.Display;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
@@ -28,7 +35,9 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
+import android.net.wifi.WifiManager;
 
 import com.google.atap.tango.ux.TangoUxLayout;
 import com.google.atap.tango.ux.UxExceptionEvent;
@@ -68,13 +77,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final String LOG_TAG = MainActivity.class.getName();
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
     private static final int REQUEST_CODE_CAMERA = 1002;
+    private static final int REQUEST_CODE_ACCESS_WIFI = 1003;
+    private static final int REQUEST_CODE_CHANGE_WIFI = 1004;
+    private static final int REQUEST_CODE_COARSE_LOCATION = 1005;
 
     private static final int INVALID_TEXTURE_ID = 0;
 //    int mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
 
     int mRenderedTexture = -1;
-
-    private final Handler mUIHandler = new Handler(Looper.getMainLooper());
 
     private Tango mTango;
     private TangoConfig mTangoConfig;
@@ -126,6 +136,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor mOrientation;
     private Sensor mMagnetometer;
 
+    private PeriodicScan wifi_scanner_;
+    private WifiManager mWifiMangerRef;
+    private BroadcastReceiver mWifiScanReceiverRef;
+
     // Gyroscope
     private TextView mLabelRx;
     private TextView mLabelRy;
@@ -152,23 +166,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView mLabelMy;
     private TextView mLabelMz;
 
+    private TextView mLabelScanTimes;
+    private TextView mLabelWifiNums;
+
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
     private Button mStartStopButton;
-    private ToggleButton mTogglePoseButton;
-    private ToggleButton mToggleFileButton;
 
 //    private GLSurfaceView mVideoSurfaceView;
 //    private TangoVideoRenderer mVideoRenderer;
 
     private int mCameraToDisplayRotation = 0;
 
-    private Boolean mIsRecordingPose = true;
-    private Boolean mIsWriteFile = true;
+    private boolean mIsRecordingPose = true;
+    private boolean mIsWriteFile = true;
+    private boolean mIsWifiEnabled = true;
+
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
-    private Boolean mStoragePermissionGranted = false;
-    private Boolean mCameraPermissionGranted = false;
+    private boolean mStoragePermissionGranted = false;
+    private boolean mCameraPermissionGranted = false;
+    private boolean mAccessWifiPermissionGranted = false;
+    private boolean mChangeWifiPermissionGranted = false;
+    private boolean mCoarseLocationPermissionGranted = false;
 
     private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
     private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
@@ -219,6 +239,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mOrientation = mSensorManager.getDefaultSensor(ROTATION_SENSOR);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+        // initialize UI widgets
         mLabelRx = (TextView)findViewById(R.id.label_rx);
         mLabelRy = (TextView)findViewById(R.id.label_ry);
         mLabelRz = (TextView)findViewById(R.id.label_rz);
@@ -231,17 +252,90 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mLabelGx = (TextView)findViewById(R.id.label_gx);
         mLabelGy = (TextView)findViewById(R.id.label_gy);
         mLabelGz = (TextView)findViewById(R.id.label_gz);
-        mLabelOw = (TextView)findViewById(R.id.label_ow);
-        mLabelOx = (TextView)findViewById(R.id.label_ox);
-        mLabelOy = (TextView)findViewById(R.id.label_oy);
-        mLabelOz = (TextView)findViewById(R.id.label_oz);
+//        mLabelOw = (TextView)findViewById(R.id.label_ow);
+//        mLabelOx = (TextView)findViewById(R.id.label_ox);
+//        mLabelOy = (TextView)findViewById(R.id.label_oy);
+//        mLabelOz = (TextView)findViewById(R.id.label_oz);
         mLabelMx = (TextView)findViewById(R.id.label_mx);
         mLabelMy = (TextView)findViewById(R.id.label_my);
         mLabelMz = (TextView)findViewById(R.id.label_mz);
 
+        mLabelScanTimes = (TextView)findViewById(R.id.label_wifi_record_num);
+        mLabelWifiNums = (TextView)findViewById(R.id.label_wifi_beacon_num);
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
-        mTogglePoseButton = (ToggleButton)findViewById(R.id.toggle_pose);
-        mToggleFileButton = (ToggleButton)findViewById(R.id.toggle_file);
+
+        Runnable wifi_callback = new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mLabelScanTimes.setText(String.valueOf(wifi_scanner_.getRecordCount()));
+                        mLabelWifiNums.setText(String.valueOf(wifi_scanner_.getLatestScanResult().size()));
+                    }
+                });
+            }
+        };
+
+        wifi_scanner_ = new PeriodicScan(this, wifi_callback);
+        mWifiScanReceiverRef = wifi_scanner_.getBroadcastReceiver();
+        mWifiMangerRef = wifi_scanner_.getWifiManager();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.option_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch(item.getItemId()){
+            case R.id.menu_toggle_pose:
+                mIsRecordingPose = !mIsRecordingPose;
+                item.setChecked(mIsRecordingPose);
+                if(mIsRecordingPose){
+                    showToast("Pose enabled");
+                }else{
+                    showToast("Pose disabled");
+                }
+                break;
+            case R.id.menu_toggle_file:
+                mIsWriteFile = !mIsWriteFile;
+                item.setChecked(mIsWriteFile);
+                if(mIsWriteFile){
+                    showToast("File enabled");
+                }else{
+                    showToast("File disabled");
+                }
+                break;
+            case R.id.menu_toggle_wifi:
+                mIsWifiEnabled = !mIsWifiEnabled;
+                item.setChecked(mIsWifiEnabled);
+                if(mIsWifiEnabled){
+                    showToast("Wifi enabled");
+                }else{
+                    showToast("Wifi disabled");
+                }
+                break;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu){
+        //getMenuInflater().inflate(R.menu.option_menu, menu);
+        if(mIsRecording.get()){
+            menu.getItem(0).setEnabled(false);
+            menu.getItem(1).setEnabled(false);
+            menu.getItem(2).setEnabled(false);
+        }else{
+            menu.getItem(0).setEnabled(true);
+            menu.getItem(1).setEnabled(true);
+            menu.getItem(2).setEnabled(true);
+        }
+        return true;
     }
 
     @Override
@@ -254,29 +348,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.unregisterListener(this, mLinearAcce);
         mSensorManager.unregisterListener(this, mOrientation);
         mSensorManager.unregisterListener(this, mMagnetometer);
-
+        unregisterReceiver(mWifiScanReceiverRef);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
     protected void onResume(){
         super.onResume();
-        //request permission
-        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST_CODE_WRITE_EXTERNAL);
-        }else{
-            mStoragePermissionGranted = true;
-        }
-
-        permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CODE_CAMERA);
-        }else{
-            mCameraPermissionGranted = true;
-        }
+        mStoragePermissionGranted = checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_CODE_WRITE_EXTERNAL);
+        mCameraPermissionGranted = checkPermission(Manifest.permission.CAMERA, REQUEST_CODE_CAMERA);
+        mAccessWifiPermissionGranted = checkPermission(Manifest.permission.ACCESS_WIFI_STATE, REQUEST_CODE_ACCESS_WIFI);
+        mChangeWifiPermissionGranted = checkPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CODE_CHANGE_WIFI);
+        mCoarseLocationPermissionGranted = checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, REQUEST_CODE_COARSE_LOCATION);
 
         mStartStopButton.setText(R.string.start_title);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
@@ -286,55 +369,63 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_FASTEST);
 
+        registerReceiver(mWifiScanReceiverRef, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
         // prevent screen lock
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
-        switch (requestCode){
-            case REQUEST_CODE_WRITE_EXTERNAL:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    mStoragePermissionGranted = true;
-                }
-                break;
-            case REQUEST_CODE_CAMERA:
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    mCameraPermissionGranted = true;
-                }
-        }
+    private void showAlertAndStop(final String text){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(text)
+                        .setCancelable(false)
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                stopRecording();
+                            }
+                        }).show();
+            }
+        });
+    }
+
+    private void showToast(final String text){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, text, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void startNewRecording(){
         if(!mStoragePermissionGranted){
-            // request permission
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Permission not granted")
-                    .setCancelable(false)
-                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            stopRecording();
-                        }
-                    }).show();
+            showAlertAndStop("Storage permission not granted");
             return;
         }
         if(!mCameraPermissionGranted){
-            // request permission
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Camera permission not granted")
-                    .setCancelable(false)
-                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            stopRecording();
-                        }
-                    }).show();
+            showAlertAndStop("Camera permission not granted");
+            return;
+        }
+        if(mIsWifiEnabled && (!mAccessWifiPermissionGranted || !mChangeWifiPermissionGranted)){
+            showAlertAndStop("Wifi permission not granted");
+            return;
+        }
+        if(mIsWifiEnabled && !mCoarseLocationPermissionGranted){
+            showAlertAndStop("Location permission not granted");
             return;
         }
 
-        mTogglePoseButton.setEnabled(false);
-        mToggleFileButton.setEnabled(false);
+        // initialize Wifi
+        if(mIsWifiEnabled){
+            if(!mWifiMangerRef.isWifiEnabled()){
+                showAlertAndStop("Turn on wifi first");
+            }
+            wifi_scanner_.start();
+        }
+
         if(mIsRecordingPose) {
             mTangoUx.start(new StartParams());
             // initialize tango service
@@ -359,8 +450,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             });
         }
-
-        //initialize recorder
+        // initialize recorder
         if(mIsWriteFile) {
             try {
                 String output_dir = setupOutputFolder();
@@ -386,6 +476,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if(mRecorder != null) {
             mRecorder.endFiles();
         }
+
+        if(mIsWifiEnabled) {
+            wifi_scanner_.terminate();
+            if(mIsWriteFile) {
+                wifi_scanner_.saveResultToFile(mRecorder.getOutputDir() + "/wifi.txt");
+            }
+            wifi_scanner_.clear();
+        }
+
         if (mIsRecordingPose) {
             synchronized (this) {
                 try {
@@ -399,9 +498,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
             mIsConnected.set(false);
         }
-        mTogglePoseButton.setEnabled(true);
-        mToggleFileButton.setEnabled(true);
 
+        showToast("Stopped");
     }
 
     public void startStopRecording(View view){
@@ -414,12 +512,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    public void tooglePoseRecording(View view){
-        mIsRecordingPose = mTogglePoseButton.isChecked();
-    }
-    public void toogleFileWriting(View view) {
-        mIsWriteFile = mToggleFileButton.isChecked();
-    }
     public void switchCamera(View view){
 //        if(mRenderedTexture == TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE){
 //            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_COLOR;
@@ -629,7 +721,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         long timestamp = event.timestamp;
         float[] values = {0.0f, 0.0f, 0.0f, 0.0f};
         if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
-            mUIHandler.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mLabelAx.setText(String.format(Locale.US, "%.6f", event.values[0]));
@@ -642,7 +734,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ACCELEROMETER);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
-            mUIHandler.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mLabelRx.setText(String.format(Locale.US, "%.6f", event.values[0]));
@@ -656,7 +748,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         }
         else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
-            mUIHandler.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mLabelLx.setText(String.format(Locale.US, "%.6f", event.values[0]));
@@ -708,6 +800,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.MAGNETOMETER);
             }
+        }
+    }
+
+    private boolean checkPermission(String permission, int request_code){
+        int permissionCheck = ContextCompat.checkSelfPermission(this, permission);
+        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[]{permission},
+                    request_code);
+            return false;
+        }else{
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
+        switch (requestCode){
+            case REQUEST_CODE_WRITE_EXTERNAL:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mStoragePermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_CAMERA:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    mCameraPermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_ACCESS_WIFI:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    mAccessWifiPermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_CHANGE_WIFI:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    mChangeWifiPermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_COARSE_LOCATION:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    mCoarseLocationPermissionGranted = true;
+                }
+                break;
         }
     }
 }

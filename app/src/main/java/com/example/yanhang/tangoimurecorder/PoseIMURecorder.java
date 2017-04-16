@@ -42,6 +42,8 @@ public class PoseIMURecorder {
     public static final int ROTATION_VECTOR = 5;
     public static final int TANGO_POSE = 6;
 
+    private String output_dir;
+
     private BufferedWriter[] file_writers_ = new BufferedWriter[SENSOR_COUNT];
     //private Vector<Vector<String> > data_buffers_ = new Vector<>();
     private String[] default_file_names_ = {"gyro.txt", "acce.txt", "magnet.txt", "linacce.txt",
@@ -49,6 +51,7 @@ public class PoseIMURecorder {
 
     public PoseIMURecorder(String path, MainActivity parent){
         parent_ = parent;
+        output_dir = path;
         Calendar file_timestamp = Calendar.getInstance();
         String header = "# Created at " + file_timestamp.getTime().toString() + "\n";
         try {
@@ -59,6 +62,10 @@ public class PoseIMURecorder {
         }catch (IOException e){
             e.printStackTrace();
         }
+    }
+
+    public String getOutputDir(){
+        return output_dir;
     }
 
     private void writeBufferToFile(Writer writer, Vector<String> buffer) throws IOException{

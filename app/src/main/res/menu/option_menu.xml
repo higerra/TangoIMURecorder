@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/menu_toggle_pose"
+        android:title="Pose"
+        android:checkable="true"
+        android:checked="true"/>
+    <item android:id="@+id/menu_toggle_file"
+        android:title="File"
+        android:checkable="true"
+        android:checked="true"/>
+    <item android:id="@+id/menu_toggle_wifi"
+        android:title="Wifi"
+        android:checkable="true"
+        android:checked="true"/>
+</menu>
