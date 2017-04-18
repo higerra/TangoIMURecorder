@@ -12,4 +12,7 @@
         android:title="Wifi"
         android:checkable="true"
         android:checked="true"/>
+    <item android:id="@+id/menu_adl"
+        android:title="ADL"
+        android:checkable="false"/>
 </menu>

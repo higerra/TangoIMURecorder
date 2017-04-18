@@ -12,6 +12,8 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.util.Log;
+import android.widget.Toast;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -25,6 +27,7 @@ import java.io.File;
 
 public class PeriodicScan implements Runnable{
     private int scan_interval_ = 3000;
+    static final String LOG_TAG = "PerodicScan";
 
     private final MainActivity parent_;
     private final Runnable receive_callback_;
@@ -119,16 +122,20 @@ public class PeriodicScan implements Runnable{
 
                 writer.flush();
                 writer.close();
+                Log.i(LOG_TAG, "File written to " + path);
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    public void clear(){
+    public void reset(){
         synchronized (this) {
+            Log.i(LOG_TAG, "Clearning");
             terminate();
             scan_results_.clear();
+            Log.i(LOG_TAG, "Cleared");
         }
     }
 

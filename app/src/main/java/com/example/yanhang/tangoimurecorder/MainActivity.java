@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.PeriodicSync;
 import android.content.pm.PackageManager;
@@ -120,7 +121,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_TANGO_SERVICE_NOT_RESPONDING) {
                 Log.i(LOG_TAG, "TangoService is not responding ");
             }
-
         }
     };
 
@@ -172,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
     private Button mStartStopButton;
+    private ToggleButton mToggleALButton;
 
 //    private GLSurfaceView mVideoSurfaceView;
 //    private TangoVideoRenderer mVideoRenderer;
@@ -319,6 +320,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     showToast("Wifi disabled");
                 }
                 break;
+            case R.id.menu_adl:
+                Intent intent = new Intent(this, ADLActivity.class);
+                startActivity(intent);
         }
         return false;
     }
@@ -338,10 +342,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return true;
     }
 
+    public void onToggleALClicked(View view){
+
+    }
+
     @Override
     protected void onPause(){
         super.onPause();
-        stopRecording();
+        if(mIsRecording.get()) {
+            stopRecording();
+        }
         mSensorManager.unregisterListener(this, mAccelerometer);
         mSensorManager.unregisterListener(this, mGyroscope);
         mSensorManager.unregisterListener(this, mGravity);
@@ -423,6 +433,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if(!mWifiMangerRef.isWifiEnabled()){
                 showAlertAndStop("Turn on wifi first");
             }
+            wifi_scanner_.reset();
             wifi_scanner_.start();
         }
 
@@ -482,7 +493,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if(mIsWriteFile) {
                 wifi_scanner_.saveResultToFile(mRecorder.getOutputDir() + "/wifi.txt");
             }
-            wifi_scanner_.clear();
         }
 
         if (mIsRecordingPose) {
@@ -510,14 +520,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             stopRecording();
             mStartStopButton.setText(R.string.start_title);
         }
-    }
-
-    public void switchCamera(View view){
-//        if(mRenderedTexture == TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE){
-//            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_COLOR;
-//        }else{
-//            mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
-//        }
     }
 
     private TangoConfig setupTangoConfig(Tango tango){
@@ -664,7 +666,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {
-                Log.i(LOG_TAG, "pose available");
                 if(mTangoUx != null){
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
