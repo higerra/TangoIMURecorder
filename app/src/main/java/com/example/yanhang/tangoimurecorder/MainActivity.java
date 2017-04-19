@@ -6,18 +6,15 @@ import android.content.BroadcastReceiver;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.PeriodicSync;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 
 import android.hardware.SensorEventListener;
 import android.hardware.display.DisplayManager;
-import android.opengl.GLSurfaceView;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.support.annotation.BoolRes;
 import android.support.v4.app.ActivityCompat;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -32,12 +29,13 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+import android.widget.ListView;
+import android.widget.ArrayAdapter;
 import android.net.wifi.WifiManager;
 
 import com.google.atap.tango.ux.TangoUxLayout;
@@ -45,7 +43,7 @@ import com.google.atap.tango.ux.UxExceptionEvent;
 import com.google.atap.tango.ux.UxExceptionEventListener;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.Tango.OnTangoUpdateListener;
-import com.google.atap.tangoservice.TangoCameraIntrinsics;
+import com.google.atap.tangoservice.TangoAreaDescriptionMetaData;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
@@ -66,6 +64,7 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -73,7 +72,8 @@ import org.rajawali3d.surface.RajawaliSurfaceView;
 import org.rajawali3d.scene.ASceneFrameCallback;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener{
+public class MainActivity extends AppCompatActivity
+        implements SensorEventListener, SetAdfNameDialog.CallbackListener, SaveAdfTask.SaveAdfListener{
 
     private static final String LOG_TAG = MainActivity.class.getName();
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
@@ -81,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private static final int REQUEST_CODE_ACCESS_WIFI = 1003;
     private static final int REQUEST_CODE_CHANGE_WIFI = 1004;
     private static final int REQUEST_CODE_COARSE_LOCATION = 1005;
+    private static final int REQUEST_CODE_AREA_LEARNING = 1006;
 
     private static final int INVALID_TEXTURE_ID = 0;
 //    int mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
@@ -90,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Tango mTango;
     private TangoConfig mTangoConfig;
     private TangoUx mTangoUx;
+    private int mBaseFrame = TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE;
 
     private UxExceptionEventListener mUxExceptionEventListener = new UxExceptionEventListener() {
         @Override
@@ -182,8 +184,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean mIsRecordingPose = true;
     private boolean mIsWriteFile = true;
     private boolean mIsWifiEnabled = true;
+    private boolean mIsAreaLearningMode = false;
+    private boolean mIsADFLoaded = false;
 
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
+    private AtomicBoolean mIsTangoInitialized = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
     private boolean mStoragePermissionGranted = false;
     private boolean mCameraPermissionGranted = false;
@@ -194,12 +199,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private AtomicBoolean mIsFrameAvailableTangoThread = new AtomicBoolean(false);
     private int mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
 
+    SaveAdfTask mSaveADFTask = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         mTangoUx = setupTangoUx();
+        mTango = new Tango(MainActivity.this, new Runnable() {
+            @Override
+            public void run() {
+                synchronized (MainActivity.this) {
+                    try {
+                        TangoSupport.initialize();
+                        mIsTangoInitialized.set(true);
+                    }catch(TangoOutOfDateException e){
+                        Log.e(LOG_TAG, "Out of date");
+                    }catch(TangoErrorException e){
+                        Log.e(LOG_TAG, "Tango error");
+                    }catch(TangoInvalidException e){
+                        Log.e(LOG_TAG,"Tango exception");
+                    }
+                }
+            }
+        });
         mSurfaceView = (RajawaliSurfaceView) findViewById(R.id.gl_surface_view);
         mRenderer = new MotionRajawaliRenderer(this);
 
@@ -264,6 +288,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mLabelScanTimes = (TextView)findViewById(R.id.label_wifi_record_num);
         mLabelWifiNums = (TextView)findViewById(R.id.label_wifi_beacon_num);
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
+        mToggleALButton = (ToggleButton)findViewById(R.id.toggle_al);
 
         Runnable wifi_callback = new Runnable() {
             @Override
@@ -281,6 +306,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         wifi_scanner_ = new PeriodicScan(this, wifi_callback);
         mWifiScanReceiverRef = wifi_scanner_.getBroadcastReceiver();
         mWifiMangerRef = wifi_scanner_.getWifiManager();
+
+        startActivityForResult(
+                Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE), REQUEST_CODE_AREA_LEARNING
+        );
     }
 
     @Override
@@ -321,8 +350,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
                 break;
             case R.id.menu_adl:
-                Intent intent = new Intent(this, ADLActivity.class);
-                startActivity(intent);
+                if(mIsRecording.get()){
+                    break;
+                }
+                startActivity(new Intent(this, ADFActivity.class));
+                break;
         }
         return false;
     }
@@ -334,16 +366,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             menu.getItem(0).setEnabled(false);
             menu.getItem(1).setEnabled(false);
             menu.getItem(2).setEnabled(false);
+            menu.getItem(3).setEnabled(false);
         }else{
             menu.getItem(0).setEnabled(true);
             menu.getItem(1).setEnabled(true);
             menu.getItem(2).setEnabled(true);
+            menu.getItem(3).setEnabled(true);
         }
+
         return true;
     }
 
     public void onToggleALClicked(View view){
-
+        mIsAreaLearningMode = !mIsAreaLearningMode;
+        if(mIsAreaLearningMode){
+            showToast("Area learning mode ON");
+        }else{
+            showToast("Area learning mode OFF");
+        }
     }
 
     @Override
@@ -370,6 +410,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mAccessWifiPermissionGranted = checkPermission(Manifest.permission.ACCESS_WIFI_STATE, REQUEST_CODE_ACCESS_WIFI);
         mChangeWifiPermissionGranted = checkPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CODE_CHANGE_WIFI);
         mCoarseLocationPermissionGranted = checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, REQUEST_CODE_COARSE_LOCATION);
+
 
         mStartStopButton.setText(R.string.start_title);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
@@ -428,6 +469,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             return;
         }
 
+        mToggleALButton.setEnabled(false);
         // initialize Wifi
         if(mIsWifiEnabled){
             if(!mWifiMangerRef.isWifiEnabled()){
@@ -438,28 +480,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         if(mIsRecordingPose) {
-            mTangoUx.start(new StartParams());
+            if(!mIsTangoInitialized.get()){
+                showAlertAndStop("Tango not initialized");
+            }
             // initialize tango service
-            mTango = new Tango(MainActivity.this, new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (MainActivity.this) {
-                        try {
-                            TangoSupport.initialize();
-                            mTangoConfig = setupTangoConfig(mTango);
-                            mTango.connect(mTangoConfig);
-                            startupTango();
-                            mIsConnected.set(true);
-                        }catch(TangoOutOfDateException e){
-                            Log.e(LOG_TAG, "Out of date");
-                        }catch(TangoErrorException e){
-                            Log.e(LOG_TAG, "Tango error");
-                        }catch(TangoInvalidException e){
-                            Log.e(LOG_TAG,"Tango exception");
-                        }
-                    }
-                }
-            });
+            synchronized (this) {
+                TangoConfig config = setupTangoConfig(mTango);
+                mTangoUx.start(new StartParams());
+                mTango.connect(config);
+                startupTango();
+                mIsConnected.set(true);
+            }
         }
         // initialize recorder
         if(mIsWriteFile) {
@@ -501,13 +532,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //                    mTango.disconnectCamera(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 //                    mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
                     mTangoUx.stop();
-                    mTango.disconnect();
+                    if(mIsAreaLearningMode){
+                        showSetAdfNameDialog();
+                    }else{
+                        mTango.disconnect();
+                        mIsConnected.set(false);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-            mIsConnected.set(false);
         }
+
+        mToggleALButton.setEnabled(true);
 
         showToast("Stopped");
     }
@@ -526,7 +563,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        config.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
+        if(mIsAreaLearningMode || mIsADFLoaded){
+            config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
+            mBaseFrame = TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION;
+        }else{
+            config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, false);
+            mBaseFrame = TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE;
+        }
         return config;
     }
 
@@ -659,7 +702,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private void startupTango(){
         final ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
         framePairs.add(new TangoCoordinateFramePair(
-                TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                mBaseFrame,
                 TangoPoseData.COORDINATE_FRAME_DEVICE
         ));
 
@@ -804,6 +847,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    @Override
+    public void onAdfNameOk(String name, String uuid){
+        showToast("Saving...");
+        mSaveADFTask = new SaveAdfTask(this, this, mTango, name);
+        mSaveADFTask.execute();
+    }
+
+    @Override
+    public void onAdfNameCancelled(){
+        showToast("Canceled!");
+    }
+
+    @Override
+    public void onSaveAdfFailed(String adfName){
+        showToast("Save failed");
+        mSaveADFTask = null;
+        mTango.disconnect();
+        mIsConnected.set(false);
+    }
+
+    @Override
+    public void onSaveAdfSuccess(String adfName, String adfUuid){
+        showToast("Save succeed\n name: "+adfName + "\n uuid: " + adfUuid);
+        mSaveADFTask = null;
+        mTango.disconnect();
+        mIsConnected.set(false);
+    }
+
+    private void showSetAdfNameDialog(){
+        Bundle bundle = new Bundle();
+        bundle.putString(TangoAreaDescriptionMetaData.KEY_NAME, "New ADF");
+        bundle.putString(TangoAreaDescriptionMetaData.KEY_UUID, "");
+
+        FragmentTransaction ft = getFragmentManager().beginTransaction();
+        SetAdfNameDialog setAdfNameDialog = new SetAdfNameDialog();
+        setAdfNameDialog.setArguments(bundle);
+        setAdfNameDialog.show(ft, "ADFNameDialog");
+    }
+
     private boolean checkPermission(String permission, int request_code){
         int permissionCheck = ContextCompat.checkSelfPermission(this, permission);
         if(permissionCheck != PackageManager.PERMISSION_GRANTED){
@@ -843,6 +925,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     mCoarseLocationPermissionGranted = true;
                 }
                 break;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        if(requestCode == REQUEST_CODE_AREA_LEARNING){
+            if(resultCode == RESULT_CANCELED){
+                Toast.makeText(this, "Area learning permission required.", Toast.LENGTH_SHORT).show();
+                finish();
+            }
         }
     }
 }
