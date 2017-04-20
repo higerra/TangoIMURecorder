@@ -741,7 +741,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startupTango(){
-        final ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
+        ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
         if(mIsADFLoaded){
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
@@ -758,6 +758,7 @@ public class MainActivity extends AppCompatActivity
             ));
         }
 
+        Log.i(LOG_TAG, "framePairs.size()=" + String.valueOf(framePairs.size()));
         mIsLocalizedToADF.set(false);
         mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
