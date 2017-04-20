@@ -33,7 +33,7 @@ public class PoseIMURecorder {
 
     MainActivity parent_;
 
-    public static final int SENSOR_COUNT = 7;
+    public static final int SENSOR_COUNT = 8;
     public static final int GYROSCOPE = 0;
     public static final int ACCELEROMETER = 1;
     public static final int MAGNETOMETER = 2;
@@ -41,13 +41,14 @@ public class PoseIMURecorder {
     public static final int GRAVITY = 4;
     public static final int ROTATION_VECTOR = 5;
     public static final int TANGO_POSE = 6;
+    public static final int STEP_COUNTER = 7;
 
     private String output_dir;
 
     private BufferedWriter[] file_writers_ = new BufferedWriter[SENSOR_COUNT];
     //private Vector<Vector<String> > data_buffers_ = new Vector<>();
     private String[] default_file_names_ = {"gyro.txt", "acce.txt", "magnet.txt", "linacce.txt",
-            "gravity.txt", "orientation.txt", "pose.txt"};
+            "gravity.txt", "orientation.txt", "pose.txt", "step.txt"};
 
     public PoseIMURecorder(String path, MainActivity parent){
         parent_ = parent;
@@ -127,6 +128,16 @@ public class PoseIMURecorder {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public Boolean addStepRecord(long timestamp, int value){
+        try{
+            file_writers_[STEP_COUNTER].write(String.format(Locale.US, "%d %d\n", timestamp, value));
+        }catch (IOException e){
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     public Boolean addPoseRecord(TangoPoseData new_pose){

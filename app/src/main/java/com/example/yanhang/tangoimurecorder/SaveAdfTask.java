@@ -48,7 +48,6 @@ public class SaveAdfTask extends AsyncTask<Void, Integer, String> {
         String adfUuid = null;
         try{
             adfUuid = mTango.saveAreaDescription();
-
             TangoAreaDescriptionMetaData metadata = mTango.loadAreaDescriptionMetaData(adfUuid);
             metadata.set(TangoAreaDescriptionMetaData.KEY_NAME, mAdfName.getBytes());
             mTango.saveAreaDescriptionMetadata(adfUuid, metadata);

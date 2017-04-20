@@ -83,6 +83,8 @@ public class MainActivity extends AppCompatActivity
     private static final int REQUEST_CODE_COARSE_LOCATION = 1005;
     private static final int REQUEST_CODE_AREA_LEARNING = 1006;
 
+    private static final int RESULT_CODE_PICK_ADF = 2001;
+
     private static final int INVALID_TEXTURE_ID = 0;
 //    int mRenderedTexture = TangoCameraIntrinsics.TANGO_CAMERA_FISHEYE;
 
@@ -91,7 +93,6 @@ public class MainActivity extends AppCompatActivity
     private Tango mTango;
     private TangoConfig mTangoConfig;
     private TangoUx mTangoUx;
-    private int mBaseFrame = TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE;
 
     private UxExceptionEventListener mUxExceptionEventListener = new UxExceptionEventListener() {
         @Override
@@ -137,6 +138,9 @@ public class MainActivity extends AppCompatActivity
     private Sensor mLinearAcce;
     private Sensor mOrientation;
     private Sensor mMagnetometer;
+    private Sensor mStepCounter;
+
+    private float mInitialStepCount = -1;
 
     private PeriodicScan wifi_scanner_;
     private WifiManager mWifiMangerRef;
@@ -171,6 +175,9 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelScanTimes;
     private TextView mLabelWifiNums;
 
+    private TextView mLabelStepCount;
+    private TextView mLabelInfo;
+
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
     private Button mStartStopButton;
@@ -187,9 +194,14 @@ public class MainActivity extends AppCompatActivity
     private boolean mIsAreaLearningMode = false;
     private boolean mIsADFLoaded = false;
 
+    private String mADFuuid = "";
+    private String mADFName = "";
+
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
     private AtomicBoolean mIsTangoInitialized = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
+    private AtomicBoolean mIsLocalizedToADF = new AtomicBoolean(false);
+
     private boolean mStoragePermissionGranted = false;
     private boolean mCameraPermissionGranted = false;
     private boolean mAccessWifiPermissionGranted = false;
@@ -263,6 +275,7 @@ public class MainActivity extends AppCompatActivity
         //mOrientation = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mOrientation = mSensorManager.getDefaultSensor(ROTATION_SENSOR);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mStepCounter = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
 
         // initialize UI widgets
         mLabelRx = (TextView)findViewById(R.id.label_rx);
@@ -287,6 +300,10 @@ public class MainActivity extends AppCompatActivity
 
         mLabelScanTimes = (TextView)findViewById(R.id.label_wifi_record_num);
         mLabelWifiNums = (TextView)findViewById(R.id.label_wifi_beacon_num);
+
+        mLabelStepCount = (TextView)findViewById(R.id.label_step_count);
+        mLabelInfo = (TextView)findViewById(R.id.label_info);
+
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
         mToggleALButton = (ToggleButton)findViewById(R.id.toggle_al);
 
@@ -353,7 +370,11 @@ public class MainActivity extends AppCompatActivity
                 if(mIsRecording.get()){
                     break;
                 }
-                startActivity(new Intent(this, ADFActivity.class));
+                Intent adf_intent = new Intent(this, ADFActivity.class);
+                adf_intent.putExtra("name", mADFName);
+                adf_intent.putExtra("uuid", mADFuuid);
+                adf_intent.putExtra("adf_enabled", mIsADFLoaded);
+                startActivityForResult(adf_intent, RESULT_CODE_PICK_ADF);
                 break;
         }
         return false;
@@ -398,6 +419,8 @@ public class MainActivity extends AppCompatActivity
         mSensorManager.unregisterListener(this, mLinearAcce);
         mSensorManager.unregisterListener(this, mOrientation);
         mSensorManager.unregisterListener(this, mMagnetometer);
+        mSensorManager.unregisterListener(this, mStepCounter);
+
         unregisterReceiver(mWifiScanReceiverRef);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
@@ -419,6 +442,7 @@ public class MainActivity extends AppCompatActivity
         mSensorManager.registerListener(this, mLinearAcce, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mOrientation, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mStepCounter, SensorManager.SENSOR_DELAY_FASTEST);
 
         registerReceiver(mWifiScanReceiverRef, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
         // prevent screen lock
@@ -510,6 +534,8 @@ public class MainActivity extends AppCompatActivity
                 e.printStackTrace();
             }
         }
+        mInitialStepCount = -1.0f;
+        mLabelInfo.setText("Not localized");
         mIsRecording.set(true);
     }
 
@@ -545,7 +571,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         mToggleALButton.setEnabled(true);
-
+        mLabelInfo.setText("Stopped");
         showToast("Stopped");
     }
 
@@ -563,12 +589,16 @@ public class MainActivity extends AppCompatActivity
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        if(mIsAreaLearningMode || mIsADFLoaded){
+        if(mIsAreaLearningMode){
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
-            mBaseFrame = TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION;
-        }else{
-            config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, false);
-            mBaseFrame = TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE;
+        }
+        if(mIsADFLoaded && mADFuuid != null){
+            try {
+                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, mADFuuid);
+                Log.i(LOG_TAG, mADFuuid + " loaded");
+            }catch (TangoErrorException e){
+                Log.e(LOG_TAG, e.getMessage());
+            }
         }
         return config;
     }
@@ -669,6 +699,17 @@ public class MainActivity extends AppCompatActivity
 
     }
 
+    private void resetUI(){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mLabelWifiNums.setText("N/A");
+                mLabelScanTimes.setText("N/A");
+                mLabelStepCount.setText("N/A");
+            }
+        });
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent motionEvent){
         mRenderer.onTouchEvent(motionEvent);
@@ -701,23 +742,59 @@ public class MainActivity extends AppCompatActivity
 
     private void startupTango(){
         final ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
-        framePairs.add(new TangoCoordinateFramePair(
-                mBaseFrame,
-                TangoPoseData.COORDINATE_FRAME_DEVICE
-        ));
+        if(mIsADFLoaded){
+            framePairs.add(new TangoCoordinateFramePair(
+                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
+                    TangoPoseData.COORDINATE_FRAME_DEVICE
+            ));
+            framePairs.add(new TangoCoordinateFramePair(
+                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
+                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+            ));
+        }else {
+            framePairs.add(new TangoCoordinateFramePair(
+                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                    TangoPoseData.COORDINATE_FRAME_DEVICE
+            ));
+        }
 
+        mIsLocalizedToADF.set(false);
         mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {
                 if(mTangoUx != null){
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
-                if(mIsRecording.get() && mIsWriteFile) {
-//                    final double nano_to_second = 1e09;
-//                    long timestamp = (long)(tangoPoseData.timestamp * nano_to_second);
-//                    float[] translation = tangoPoseData.getTranslationAsFloats();
-//                    float[] orientation = tangoPoseData.getRotationAsFloats();
-                    mRecorder.addPoseRecord(tangoPoseData);
+
+                Log.i(LOG_TAG, String.valueOf(mIsADFLoaded));
+                Log.i(LOG_TAG, "Base frame: " + String.valueOf(tangoPoseData.baseFrame));
+                Log.i(LOG_TAG, "Target frame: " + String.valueOf(tangoPoseData.targetFrame));
+
+                if(mIsADFLoaded){
+                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE){
+                        Log.i(LOG_TAG, "Pose available");
+                        if(mIsRecording.get() && mIsWriteFile) {
+                            mRecorder.addPoseRecord(tangoPoseData);
+                        }
+                    }
+                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
+                        Log.i(LOG_TAG, "Relocalized");
+                        if(!mIsLocalizedToADF.get()) {
+                            showToast("Localized to ADF");
+                            mIsLocalizedToADF.set(true);
+                        }
+
+                    }
+                }else{
+                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE){
+                        if(mIsRecording.get() && mIsWriteFile) {
+                            mRecorder.addPoseRecord(tangoPoseData);
+                        }
+                    }
                 }
             }
 
@@ -844,6 +921,19 @@ public class MainActivity extends AppCompatActivity
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.MAGNETOMETER);
             }
+        }else if(event.sensor.getType() == Sensor.TYPE_STEP_COUNTER){
+            if(mIsRecording.get()) {
+                if (mInitialStepCount < 0) {
+                    mInitialStepCount = event.values[0];
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        int cur_step = (int) (event.values[0] - mInitialStepCount);
+                        mLabelStepCount.setText(String.valueOf(cur_step));
+                    }
+                });
+            }
         }
     }
 
@@ -934,6 +1024,19 @@ public class MainActivity extends AppCompatActivity
             if(resultCode == RESULT_CANCELED){
                 Toast.makeText(this, "Area learning permission required.", Toast.LENGTH_SHORT).show();
                 finish();
+            }
+        }else if(requestCode == RESULT_CODE_PICK_ADF){
+            if(resultCode == RESULT_OK && data != null){
+                String uuid = data.getStringExtra("uuid");
+                String name = data.getStringExtra("name");
+                mIsADFLoaded = data.getBooleanExtra("adf_enabled", false);
+                mADFuuid = uuid;
+                mADFName = name;
+                if(mIsADFLoaded) {
+                    showToast(name + "(" + uuid + ")" + " selected");
+                }else{
+                    showToast("ADF diabled");
+                }
             }
         }
     }
