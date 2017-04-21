@@ -76,6 +76,8 @@ public class MainActivity extends AppCompatActivity
         implements SensorEventListener, SetAdfNameDialog.CallbackListener, SaveAdfTask.SaveAdfListener{
 
     private static final String LOG_TAG = MainActivity.class.getName();
+    private static final String INTENT_EXTRA_CONFIG = "config";
+
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
     private static final int REQUEST_CODE_CAMERA = 1002;
     private static final int REQUEST_CODE_ACCESS_WIFI = 1003;
@@ -188,14 +190,7 @@ public class MainActivity extends AppCompatActivity
 
     private int mCameraToDisplayRotation = 0;
 
-    private boolean mIsRecordingPose = true;
-    private boolean mIsWriteFile = true;
-    private boolean mIsWifiEnabled = true;
-    private boolean mIsAreaLearningMode = false;
-    private boolean mIsADFLoaded = false;
-
-    private String mADFuuid = "";
-    private String mADFName = "";
+    TangoIMUConfig mConfig = new TangoIMUConfig();
 
     private AtomicBoolean mIsConnected = new AtomicBoolean(false);
     private AtomicBoolean mIsTangoInitialized = new AtomicBoolean(false);
@@ -385,26 +380,10 @@ public class MainActivity extends AppCompatActivity
         //getMenuInflater().inflate(R.menu.option_menu, menu);
         if(mIsRecording.get()){
             menu.getItem(0).setEnabled(false);
-            menu.getItem(1).setEnabled(false);
-            menu.getItem(2).setEnabled(false);
-            menu.getItem(3).setEnabled(false);
-        }else{
+        }else {
             menu.getItem(0).setEnabled(true);
-            menu.getItem(1).setEnabled(true);
-            menu.getItem(2).setEnabled(true);
-            menu.getItem(3).setEnabled(true);
         }
-
         return true;
-    }
-
-    public void onToggleALClicked(View view){
-        mIsAreaLearningMode = !mIsAreaLearningMode;
-        if(mIsAreaLearningMode){
-            showToast("Area learning mode ON");
-        }else{
-            showToast("Area learning mode OFF");
-        }
     }
 
     @Override
@@ -484,18 +463,18 @@ public class MainActivity extends AppCompatActivity
             showAlertAndStop("Camera permission not granted");
             return;
         }
-        if(mIsWifiEnabled && (!mAccessWifiPermissionGranted || !mChangeWifiPermissionGranted)){
+        if(mConfig.getWifiEnabled() && (!mAccessWifiPermissionGranted || !mChangeWifiPermissionGranted)){
             showAlertAndStop("Wifi permission not granted");
             return;
         }
-        if(mIsWifiEnabled && !mCoarseLocationPermissionGranted){
+        if(mConfig.getWifiEnabled() && !mCoarseLocationPermissionGranted){
             showAlertAndStop("Location permission not granted");
             return;
         }
 
         mToggleALButton.setEnabled(false);
         // initialize Wifi
-        if(mIsWifiEnabled){
+        if(mConfig.getWifiEnabled()){
             if(!mWifiMangerRef.isWifiEnabled()){
                 showAlertAndStop("Turn on wifi first");
             }
@@ -503,7 +482,7 @@ public class MainActivity extends AppCompatActivity
             wifi_scanner_.start();
         }
 
-        if(mIsRecordingPose) {
+        if(mConfig.getPoseEnabled()) {
             if(!mIsTangoInitialized.get()){
                 showAlertAndStop("Tango not initialized");
             }
@@ -517,7 +496,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
         // initialize recorder
-        if(mIsWriteFile) {
+        if(mConfig.getFileEnabled()) {
             try {
                 String output_dir = setupOutputFolder();
                 mRecorder = new PoseIMURecorder(output_dir, this);
@@ -545,20 +524,20 @@ public class MainActivity extends AppCompatActivity
             mRecorder.endFiles();
         }
 
-        if(mIsWifiEnabled) {
+        if(mConfig.getWifiEnabled()) {
             wifi_scanner_.terminate();
-            if(mIsWriteFile) {
+            if(mConfig.getFileEnabled()) {
                 wifi_scanner_.saveResultToFile(mRecorder.getOutputDir() + "/wifi.txt");
             }
         }
 
-        if (mIsRecordingPose) {
+        if (mConfig.getPoseEnabled()) {
             synchronized (this) {
                 try {
 //                    mTango.disconnectCamera(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 //                    mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
                     mTangoUx.stop();
-                    if(mIsAreaLearningMode){
+                    if(mConfig.getAreaLearningMode()){
                         showSetAdfNameDialog();
                     }else{
                         mTango.disconnect();
@@ -589,13 +568,13 @@ public class MainActivity extends AppCompatActivity
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        if(mIsAreaLearningMode){
+        if(mConfig.getAreaLearningMode()){
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
         }
-        if(mIsADFLoaded && mADFuuid != null){
+        if(mConfig.getADFEnabled() && mConfig.getADFUuid() != null){
             try {
-                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, mADFuuid);
-                Log.i(LOG_TAG, mADFuuid + " loaded");
+                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, mConfig.getADFUuid());
+                Log.i(LOG_TAG, mConfig.getADFUuid() + " loaded");
             }catch (TangoErrorException e){
                 Log.e(LOG_TAG, e.getMessage());
             }
@@ -640,10 +619,18 @@ public class MainActivity extends AppCompatActivity
 
                     // Update current camera pose
                     try{
-                        TangoPoseData lastFramePose = TangoSupport.getPoseAtTime(0,
-                                TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
-                                TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
+                        TangoPoseData lastFramePose;
+                        if(mConfig.getADFEnabled()){
+                            lastFramePose =TangoSupport.getPoseAtTime(0,
+                                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
+                                    TangoPoseData.COORDINATE_FRAME_DEVICE,
+                                    TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
+                        }else{
+                            lastFramePose =TangoSupport.getPoseAtTime(0,
+                                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                                    TangoPoseData.COORDINATE_FRAME_DEVICE,
+                                    TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
+                        }
                         mRenderer.updateCameraPose(lastFramePose);
                     }catch (TangoErrorException e){
                         Log.e(LOG_TAG, "Could not get valid transform");
@@ -742,7 +729,7 @@ public class MainActivity extends AppCompatActivity
 
     private void startupTango(){
         ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
-        if(mIsADFLoaded){
+        if(mConfig.getADFEnabled()){
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_DEVICE
@@ -758,7 +745,6 @@ public class MainActivity extends AppCompatActivity
             ));
         }
 
-        Log.i(LOG_TAG, "framePairs.size()=" + String.valueOf(framePairs.size()));
         mIsLocalizedToADF.set(false);
         mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
@@ -767,32 +753,34 @@ public class MainActivity extends AppCompatActivity
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
 
-                Log.i(LOG_TAG, String.valueOf(mIsADFLoaded));
-                Log.i(LOG_TAG, "Base frame: " + String.valueOf(tangoPoseData.baseFrame));
-                Log.i(LOG_TAG, "Target frame: " + String.valueOf(tangoPoseData.targetFrame));
-
-                if(mIsADFLoaded){
+                if(mConfig.getADFEnabled()){
                     if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
-                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE){
-                        Log.i(LOG_TAG, "Pose available");
-                        if(mIsRecording.get() && mIsWriteFile) {
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
+                        if(mIsRecording.get() && mConfig.getFileEnabled()) {
                             mRecorder.addPoseRecord(tangoPoseData);
                         }
                     }
                     if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
-                        Log.i(LOG_TAG, "Relocalized");
                         if(!mIsLocalizedToADF.get()) {
                             showToast("Localized to ADF");
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mLabelInfo.setText("Localized to " + mConfig.getADFName());
+                                }
+                            });
                             mIsLocalizedToADF.set(true);
                         }
 
                     }
                 }else{
                     if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
-                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE){
-                        if(mIsRecording.get() && mIsWriteFile) {
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
+                        if(mIsRecording.get() && mConfig.getFileEnabled()) {
                             mRecorder.addPoseRecord(tangoPoseData);
                         }
                     }
@@ -842,6 +830,7 @@ public class MainActivity extends AppCompatActivity
     public void onSensorChanged(final SensorEvent event){
         long timestamp = event.timestamp;
         float[] values = {0.0f, 0.0f, 0.0f, 0.0f};
+        final Boolean mIsWriteFile = mConfig.getFileEnabled();
         if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
             runOnUiThread(new Runnable() {
                 @Override
@@ -1030,14 +1019,7 @@ public class MainActivity extends AppCompatActivity
             if(resultCode == RESULT_OK && data != null){
                 String uuid = data.getStringExtra("uuid");
                 String name = data.getStringExtra("name");
-                mIsADFLoaded = data.getBooleanExtra("adf_enabled", false);
-                mADFuuid = uuid;
-                mADFName = name;
-                if(mIsADFLoaded) {
-                    showToast(name + "(" + uuid + ")" + " selected");
-                }else{
-                    showToast("ADF diabled");
-                }
+                mConfig = (TangoIMUConfig)data.getSerializableExtra(INTENT_EXTRA_CONFIG);
             }
         }
     }

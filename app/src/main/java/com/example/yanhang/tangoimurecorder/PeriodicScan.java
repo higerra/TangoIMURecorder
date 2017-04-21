@@ -19,6 +19,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Calendar;
 
@@ -148,6 +149,14 @@ public class PeriodicScan implements Runnable{
         is_running_.set(true);
         run();
     }
+
+    public void singleScan(){
+        if(!wifi_manager_.isWifiEnabled()){
+            wifi_manager_.setWifiEnabled(true);
+        }
+        wifi_manager_.startScan();
+    }
+
     @Override
     public void run(){
         if(!wifi_manager_.isWifiEnabled()){
