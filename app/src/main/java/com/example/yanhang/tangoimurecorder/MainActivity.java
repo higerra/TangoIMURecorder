@@ -334,33 +334,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
         switch(item.getItemId()){
-            case R.id.menu_toggle_pose:
-                mIsRecordingPose = !mIsRecordingPose;
-                item.setChecked(mIsRecordingPose);
-                if(mIsRecordingPose){
-                    showToast("Pose enabled");
-                }else{
-                    showToast("Pose disabled");
-                }
-                break;
-            case R.id.menu_toggle_file:
-                mIsWriteFile = !mIsWriteFile;
-                item.setChecked(mIsWriteFile);
-                if(mIsWriteFile){
-                    showToast("File enabled");
-                }else{
-                    showToast("File disabled");
-                }
-                break;
-            case R.id.menu_toggle_wifi:
-                mIsWifiEnabled = !mIsWifiEnabled;
-                item.setChecked(mIsWifiEnabled);
-                if(mIsWifiEnabled){
-                    showToast("Wifi enabled");
-                }else{
-                    showToast("Wifi disabled");
-                }
-                break;
             case R.id.menu_adl:
                 if(mIsRecording.get()){
                     break;
