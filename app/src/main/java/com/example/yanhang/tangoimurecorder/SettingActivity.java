@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -28,7 +27,7 @@ import java.util.List;
  * Created by yanhang on 4/18/17.
  */
 
-public class ADFActivity extends AppCompatActivity {
+public class SettingActivity extends AppCompatActivity {
 
     class ADFEntry{
         String name;
@@ -89,41 +88,58 @@ public class ADFActivity extends AppCompatActivity {
     ArrayList<ADFEntry> mADFList;
     ListView mADFListView;
     ADFAdapter mListAdapter;
+
+    Switch mFileSwitch;
+    Switch mPoseSwitch;
+    Switch mWifiSwitch;
+    Switch mAutoWifiSwitch;
     Switch mADFSwitch;
-    String mSavedName;
-    String mSavedUuid;
+
+    TextView mLabelADFInfo;
+
+    TangoIMUConfig mConfig;
+
     private Tango mTango;
 
-    final static String LOG_TAG = ADFActivity.class.getSimpleName();
+    final static String LOG_TAG = SettingActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.fragment_al);
+        setContentView(R.layout.setting_layout);
         mADFList = new ArrayList<>();
         mADFListView = (ListView)findViewById(R.id.ad_list);
-        mListAdapter = new ADFAdapter(ADFActivity.this, mADFList);
+        mListAdapter = new ADFAdapter(SettingActivity.this, mADFList);
         mADFListView.setAdapter(mListAdapter);
+
+        mADFSwitch = (Switch)findViewById(R.id.switch_adf);
+        mPoseSwitch = (Switch)findViewById(R.id.switch_pose);
+        mWifiSwitch = (Switch)findViewById(R.id.switch_wifi);
+        mAutoWifiSwitch = (Switch)findViewById(R.id.switch_auto_wifi);
+        mFileSwitch = (Switch)findViewById(R.id.switch_file);
+
+        mLabelADFInfo = (TextView)findViewById(R.id.txt_adf);
+
         mADFListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent return_intent = new Intent();
                 ADFEntry selected = (ADFEntry)parent.getItemAtPosition(position);
-                return_intent.putExtra("name", selected.name);
-                return_intent.putExtra("uuid", selected.uuid);
-                return_intent.putExtra("adf_enabled", mADFSwitch.isChecked());
-                setResult(RESULT_OK, return_intent);
-                finish();
+                mConfig.setADFName(selected.name);
+                mConfig.setADFUuid(selected.uuid);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mLabelADFInfo.setText(mConfig.getADFName() + "(" + mConfig.getADFUuid() + ") selected");
+                    }
+                });
                 //Log.i(LOG_TAG, "Position: " + String.valueOf(position) + " count: " +  String.valueOf(parent.getCount()));
             }
         });
-        mADFSwitch = (Switch)findViewById(R.id.switch_adf);
+
 
         Intent intent = getIntent();
-        boolean isADFLoaded = intent.getBooleanExtra("adf_enabled", false);
-        mADFSwitch.setChecked(isADFLoaded);
-        mSavedName = intent.getStringExtra("name");
-        mSavedUuid = intent.getStringExtra("uuid");
+        mConfig = (TangoIMUConfig)intent.getSerializableExtra(MainActivity.INTENT_EXTRA_CONFIG);
+        mADFSwitch.setChecked(mConfig.getADFEnabled());
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
@@ -131,7 +147,7 @@ public class ADFActivity extends AppCompatActivity {
     @Override
     protected void onPause(){
         super.onPause();
-        synchronized (ADFActivity.this){
+        synchronized (SettingActivity.this){
             mTango.disconnect();
         }
     }
@@ -139,10 +155,10 @@ public class ADFActivity extends AppCompatActivity {
     @Override
     protected void onResume(){
         super.onResume();
-        mTango = new Tango(ADFActivity.this, new Runnable() {
+        mTango = new Tango(SettingActivity.this, new Runnable() {
             @Override
             public void run() {
-                synchronized (ADFActivity.this) {
+                synchronized (SettingActivity.this) {
                     if(mADFSwitch.isChecked()) {
                         updateList();
                     }
@@ -161,7 +177,7 @@ public class ADFActivity extends AppCompatActivity {
             try {
                 metaData = mTango.loadAreaDescriptionMetaData(uuid);
             }catch (TangoErrorException e){
-                Toast.makeText(ADFActivity.this, "Tango exception", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SettingActivity.this, "Tango exception", Toast.LENGTH_SHORT).show();
                 namelist.add("Unknown");
             }
             name = new String(metaData.get(TangoAreaDescriptionMetaData.KEY_NAME));
@@ -186,16 +202,27 @@ public class ADFActivity extends AppCompatActivity {
         }else{
             mADFList.clear();
             mListAdapter.notifyDataSetChanged();
-            mSavedUuid = "";
-            mSavedName = "";
+            mLabelADFInfo.setText("ADF not enabled");
         }
+    }
+
+    public void onPoseSwitchClicked(View view){
+        mConfig.setPoseEnabled(mPoseSwitch.isChecked());
+    }
+
+    public void onFileSwitchClicked(View view){
+        mConfig.setFileEnabled(mFileSwitch.isChecked());
+    }
+    public void onWifiSwitchClicked(View view){
+        mConfig.setWifiEnabled(mWifiSwitch.isChecked());
+    }
+    public void onAutoWifiSwitchClicked(View view){
+        mConfig.setContinuesWifiScan(mAutoWifiSwitch.isChecked());
     }
 
     private void prepareBackIntent(){
         Intent return_intent = new Intent();
-        return_intent.putExtra("uuid", mSavedUuid);
-        return_intent.putExtra("name", mSavedName);
-        return_intent.putExtra("adf_enabled", mADFSwitch.isChecked());
+        return_intent.putExtra(MainActivity.INTENT_EXTRA_CONFIG, mConfig);
         setResult(RESULT_OK, return_intent);
     }
 
@@ -214,5 +241,4 @@ public class ADFActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
 }

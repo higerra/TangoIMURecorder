@@ -38,6 +38,7 @@ dependencies {
     compile 'org.rajawali3d:rajawali:1.0.325@aar'
     compile 'com.android.support:support-v4:25.2.0'
     compile 'com.android.support:support-vector-drawable:25.2.0'
+
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.android.support:design:25.2.0'
     testCompile 'junit:junit:4.12'

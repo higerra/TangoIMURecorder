@@ -13,7 +13,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.display.DisplayManager;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
-import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -34,8 +33,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-import android.widget.ListView;
-import android.widget.ArrayAdapter;
 import android.net.wifi.WifiManager;
 
 import com.google.atap.tango.ux.TangoUxLayout;
@@ -64,7 +61,6 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -76,7 +72,7 @@ public class MainActivity extends AppCompatActivity
         implements SensorEventListener, SetAdfNameDialog.CallbackListener, SaveAdfTask.SaveAdfListener{
 
     private static final String LOG_TAG = MainActivity.class.getName();
-    private static final String INTENT_EXTRA_CONFIG = "config";
+    public static final String INTENT_EXTRA_CONFIG = "config";
 
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
     private static final int REQUEST_CODE_CAMERA = 1002;
@@ -334,15 +330,13 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
         switch(item.getItemId()){
-            case R.id.menu_adl:
+            case R.id.menu_setting:
                 if(mIsRecording.get()){
                     break;
                 }
-                Intent adf_intent = new Intent(this, ADFActivity.class);
-                adf_intent.putExtra("name", mADFName);
-                adf_intent.putExtra("uuid", mADFuuid);
-                adf_intent.putExtra("adf_enabled", mIsADFLoaded);
-                startActivityForResult(adf_intent, RESULT_CODE_PICK_ADF);
+                Intent intent = new Intent(this, SettingActivity.class);
+                intent.putExtra(INTENT_EXTRA_CONFIG, mConfig);
+                startActivityForResult(intent, RESULT_CODE_PICK_ADF);
                 break;
         }
         return false;
