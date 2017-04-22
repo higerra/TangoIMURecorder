@@ -306,6 +306,8 @@ public class MainActivity extends AppCompatActivity
         mScanButton = (Button)findViewById(R.id.button_scan);
         mScanButton.setVisibility(View.GONE);
 
+        updateConfig();
+
         Runnable wifi_callback = new Runnable() {
             @Override
             public void run() {
@@ -314,6 +316,9 @@ public class MainActivity extends AppCompatActivity
                     public void run() {
                         mLabelScanTimes.setText(String.valueOf(wifi_scanner_.getRecordCount()));
                         mLabelWifiNums.setText(String.valueOf(wifi_scanner_.getLatestScanResult().size()));
+                        if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
+                            mScanButton.setEnabled(true);
+                        }
                     }
                 });
             }
@@ -417,8 +422,13 @@ public class MainActivity extends AppCompatActivity
         mConfig.setContinuesWifiScan(pref.getBoolean("pref_auto_wifi_enabled", false));
         mConfig.setADFEnabled(pref.getBoolean("pref_adf_enabled", false));
         mConfig.setAreaLearningMode(pref.getBoolean("pref_al_mode", false));
-        mConfig.setADFName(pref.getString("pref_adf_name", ""));
         mConfig.setADFUuid(pref.getString("pref_adf_uuid", ""));
+        int index = mAdfUuids.indexOf(mConfig.getADFUuid());
+        if(index >= 0 && index < mAdfNames.size()){
+            mConfig.setADFName(mAdfNames.get(index));
+        }else{
+            mConfig.setADFName(mConfig.getADFUuid());
+        }
 
         runOnUiThread(new Runnable() {
             @Override
@@ -428,10 +438,6 @@ public class MainActivity extends AppCompatActivity
                     mScanButton.setVisibility(View.VISIBLE);
                 }else{
                     mScanButton.setVisibility(View.INVISIBLE);
-                }
-
-                if(mConfig.getADFEnabled() && !mConfig.getADFName().equals("")){
-                    mLabelInfo.setText(mConfig.getADFName() + " (" + mConfig.getADFUuid() + ") selected");
                 }
                 if(mConfig.getAreaLearningMode()){
                     mLabelInfo.setText("Area learning mode");
@@ -454,6 +460,7 @@ public class MainActivity extends AppCompatActivity
             name = new String(metaData.get(TangoAreaDescriptionMetaData.KEY_NAME));
             mAdfNames.add(name);
         }
+        updateConfig();
     }
 
     private void showAlertAndStop(final String text){
@@ -500,7 +507,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         // initialize Wifi
-        if(mConfig.getWifiEnabled()){
+        if(mConfig.getWifiEnabled() && mConfig.getContinuesWifiScan()){
             if(!mWifiMangerRef.isWifiEnabled()){
                 showAlertAndStop("Turn on wifi first");
             }
@@ -552,7 +559,9 @@ public class MainActivity extends AppCompatActivity
         }
 
         if(mConfig.getWifiEnabled()) {
-            wifi_scanner_.terminate();
+            if(mConfig.getContinuesWifiScan()) {
+                wifi_scanner_.terminate();
+            }
             if(mConfig.getFileEnabled()) {
                 wifi_scanner_.saveResultToFile(mRecorder.getOutputDir() + "/wifi.txt");
             }
@@ -591,7 +600,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void scanWifi(View view){
-
+        wifi_scanner_.singleScan();
+        mScanButton.setEnabled(false);
     }
 
     private TangoConfig setupTangoConfig(Tango tango){

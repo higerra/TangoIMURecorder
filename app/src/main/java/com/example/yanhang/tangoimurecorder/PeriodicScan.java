@@ -35,14 +35,19 @@ public class PeriodicScan implements Runnable{
 
     private Handler handler_ = new Handler();
     private AtomicBoolean is_running_ = new AtomicBoolean(false);
+    private AtomicBoolean is_single_scan_ = new AtomicBoolean(false);
 
     private WifiManager wifi_manager_;
     ArrayList<ArrayList<String> > scan_results_ = new ArrayList<>();
     BroadcastReceiver scan_receiver_ = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(!is_running_.get()){
-                return;
+            if(is_single_scan_.get()){
+                is_single_scan_.set(false);
+            }else {
+                if (!is_running_.get()) {
+                    return;
+                }
             }
             List<ScanResult> results = wifi_manager_.getScanResults();
             ArrayList<String> current_record = new ArrayList<>();
@@ -155,6 +160,7 @@ public class PeriodicScan implements Runnable{
             wifi_manager_.setWifiEnabled(true);
         }
         wifi_manager_.startScan();
+        is_single_scan_.set(true);
     }
 
     @Override

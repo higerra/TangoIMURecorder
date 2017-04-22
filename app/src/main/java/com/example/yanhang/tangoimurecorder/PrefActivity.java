@@ -2,8 +2,10 @@ package com.example.yanhang.tangoimurecorder;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.ListPreference;
+import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -46,7 +48,7 @@ public class PrefActivity extends Activity{
     }
 
 
-    public static class PrefFragment extends PreferenceFragment {
+    public static class PrefFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener{
 
         final static String LOG_TAG = PrefFragment.class.getSimpleName();
 
@@ -55,6 +57,8 @@ public class PrefActivity extends Activity{
 
         public final static String KEY_NAME = "adf_name";
         public final static String KEY_UUID = "adf_uuid";
+
+        ListPreference mListPreference;
 
         public static final PrefFragment newInstance(ArrayList<String> names,
                                                      ArrayList<String> uuids){
@@ -70,6 +74,7 @@ public class PrefActivity extends Activity{
         public void onCreate(Bundle savedInstanceState){
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.preference);
+            mListPreference = (ListPreference)findPreference("pref_adf_uuid");
             try {
                 ArrayList<String> names = getArguments().getStringArrayList(KEY_NAME);
                 ArrayList<String> uuids = getArguments().getStringArrayList(KEY_UUID);
@@ -80,12 +85,56 @@ public class PrefActivity extends Activity{
                     mAdfUuids[i] = uuids.get(i);
                 }
 
-                ListPreference list = (ListPreference)findPreference("pref_adf_uuid");
-                list.setEntries(mAdfNames);
-                list.setEntryValues(mAdfUuids);
+                mListPreference.setEntries(mAdfNames);
+                mListPreference.setEntryValues(mAdfUuids);
 
+                if(getPreferenceManager().getSharedPreferences().getBoolean("pref_adf_enabled", false)){
+                    mListPreference.setSummary("Please select the area description file");
+                }else{
+                    mListPreference.setSummary("Area description file disabled");
+                }
             }catch (NullPointerException e){
                 e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void onResume(){
+            super.onResume();
+            getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+            String uuid = getPreferenceManager().getSharedPreferences().getString("pref_adf_uuid", "unknwon");
+            int index = mListPreference.findIndexOfValue(uuid);
+            if(index >= 0) {
+                mListPreference.setSummary(mAdfNames[index] + " (" + uuid + ")");
+            }else{
+                mListPreference.setSummary("Invalid ADF: " + uuid);
+            }
+
+        }
+
+        @Override
+        public void onPause(){
+            super.onPause();
+            getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        }
+
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
+                                              String key){
+            if(key.equals("pref_adf_enabled")){
+                boolean adf_enabled = sharedPreferences.getBoolean(key, false);
+                if(adf_enabled){
+                    mListPreference.setSummary("Please select the area description file");
+                }else{
+                    mListPreference.setSummary("Area description file disabled");
+                }
+            }else if(key.equals("pref_adf_uuid")){
+                String uuid = sharedPreferences.getString("pref_adf_uuid", "unknwon");
+                int index = mListPreference.findIndexOfValue(uuid);
+                if(index >= 0) {
+                    mListPreference.setSummary(mAdfNames[index] + " (" + uuid + ")");
+                }else{
+                    mListPreference.setSummary("Invalid ADF: " + uuid);
+                }
             }
         }
     }
