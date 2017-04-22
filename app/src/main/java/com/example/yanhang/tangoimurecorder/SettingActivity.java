@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -94,6 +95,7 @@ public class SettingActivity extends AppCompatActivity {
     Switch mWifiSwitch;
     Switch mAutoWifiSwitch;
     Switch mADFSwitch;
+    Switch mALSwitch;
 
     TextView mLabelADFInfo;
 
@@ -117,6 +119,7 @@ public class SettingActivity extends AppCompatActivity {
         mWifiSwitch = (Switch)findViewById(R.id.switch_wifi);
         mAutoWifiSwitch = (Switch)findViewById(R.id.switch_auto_wifi);
         mFileSwitch = (Switch)findViewById(R.id.switch_file);
+        mALSwitch = (Switch)findViewById(R.id.switch_al);
 
         mLabelADFInfo = (TextView)findViewById(R.id.txt_adf);
 
@@ -140,6 +143,11 @@ public class SettingActivity extends AppCompatActivity {
         Intent intent = getIntent();
         mConfig = (TangoIMUConfig)intent.getSerializableExtra(MainActivity.INTENT_EXTRA_CONFIG);
         mADFSwitch.setChecked(mConfig.getADFEnabled());
+        mPoseSwitch.setChecked(mConfig.getPoseEnabled());
+        mFileSwitch.setChecked(mConfig.getFileEnabled());
+        mWifiSwitch.setChecked(mConfig.getWifiEnabled());
+        mAutoWifiSwitch.setChecked(mConfig.getContinuesWifiScan());
+        mALSwitch.setChecked(mConfig.getAreaLearningMode());
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
@@ -215,28 +223,49 @@ public class SettingActivity extends AppCompatActivity {
     }
     public void onWifiSwitchClicked(View view){
         mConfig.setWifiEnabled(mWifiSwitch.isChecked());
+        if(mWifiSwitch.isChecked()){
+            mAutoWifiSwitch.setEnabled(true);
+            if(mAutoWifiSwitch.isChecked()){
+                mConfig.setContinuesWifiScan(true);
+            }else{
+                mConfig.setContinuesWifiScan(false);
+            }
+        }else{
+            mAutoWifiSwitch.setEnabled(false);
+            mConfig.setContinuesWifiScan(false);
+        }
     }
+
     public void onAutoWifiSwitchClicked(View view){
         mConfig.setContinuesWifiScan(mAutoWifiSwitch.isChecked());
     }
 
-    private void prepareBackIntent(){
-        Intent return_intent = new Intent();
-        return_intent.putExtra(MainActivity.INTENT_EXTRA_CONFIG, mConfig);
-        setResult(RESULT_OK, return_intent);
+    public void onALSwitchClicked(View view){
+        mConfig.setAreaLearningMode(true);
+        mConfig.setADFEnabled(false);
+        mConfig.setADFName("");
+        mConfig.setADFUuid("");
+        mADFSwitch.setChecked(false);
+        mADFSwitch.setEnabled(false);
+        mADFList.clear();
+        mListAdapter.notifyDataSetChanged();
     }
 
     @Override
     public void onBackPressed(){
-        prepareBackIntent();
+        Intent return_intent = new Intent();
+        return_intent.putExtra(MainActivity.INTENT_EXTRA_CONFIG, mConfig);
+        setResult(RESULT_OK, return_intent);
         finish();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
         if(item.getItemId() == android.R.id.home){
-            prepareBackIntent();
-            NavUtils.navigateUpFromSameTask(this);
+            Intent return_intent = new Intent(this, MainActivity.class);
+            return_intent.putExtra(MainActivity.INTENT_EXTRA_CONFIG, mConfig);
+            setResult(RESULT_OK, return_intent);
+            NavUtils.navigateUpTo(this, return_intent);
             return true;
         }
         return super.onOptionsItemSelected(item);

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <CheckBoxPreference
+        android:key="pref_pose_enabled"
+        android:title="Enable motion tracking"
+        android:defaultValue="true"
+        />
+
+    <CheckBoxPreference
+        android:key="pref_file_enabled"
+        android:title="Write files"
+        android:summary="Stream to external storage"
+        android:defaultValue="true"
+        />
+
+    <CheckBoxPreference
+        android:key="pref_wifi_enabled"
+        android:title="Enable Wifi"
+        android:summary="Scan Wifi footprints"
+        android:defaultValue="true"
+        />
+    <CheckBoxPreference
+        android:key="pref_auto_wifi_enabled"
+        android:dependency="pref_wifi_enabled"
+        android:title="Continues Wifi scanning"
+        android:defaultValue="false"
+        />
+
+    <CheckBoxPreference
+        android:key="pref_al_mode"
+        android:title="Area learning mode"
+        />
+
+    <CheckBoxPreference
+        android:key="pref_adf_enabled"
+        android:title="Load Area Description File"
+        android:defaultValue="false"
+        />
+
+    <ListPreference
+        android:key="pref_adf_name"
+        android:title="Select area description file"
+        android:dependency="pref_adf_enabled"
+        />
+
+</PreferenceScreen>

@@ -32,7 +32,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 import android.net.wifi.WifiManager;
 
 import com.google.atap.tango.ux.TangoUxLayout;
@@ -179,7 +178,7 @@ public class MainActivity extends AppCompatActivity
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
     private Button mStartStopButton;
-    private ToggleButton mToggleALButton;
+    private Button mScanButton;
 
 //    private GLSurfaceView mVideoSurfaceView;
 //    private TangoVideoRenderer mVideoRenderer;
@@ -296,7 +295,8 @@ public class MainActivity extends AppCompatActivity
         mLabelInfo = (TextView)findViewById(R.id.label_info);
 
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
-        mToggleALButton = (ToggleButton)findViewById(R.id.toggle_al);
+        mScanButton = (Button)findViewById(R.id.button_scan);
+        mScanButton.setVisibility(View.GONE);
 
         Runnable wifi_callback = new Runnable() {
             @Override
@@ -320,6 +320,7 @@ public class MainActivity extends AppCompatActivity
         );
     }
 
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu){
         MenuInflater inflater = getMenuInflater();
@@ -420,7 +421,6 @@ public class MainActivity extends AppCompatActivity
             }
         });
     }
-
     private void startNewRecording(){
         if(!mStoragePermissionGranted){
             showAlertAndStop("Storage permission not granted");
@@ -439,7 +439,6 @@ public class MainActivity extends AppCompatActivity
             return;
         }
 
-        mToggleALButton.setEnabled(false);
         // initialize Wifi
         if(mConfig.getWifiEnabled()){
             if(!mWifiMangerRef.isWifiEnabled()){
@@ -516,7 +515,6 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        mToggleALButton.setEnabled(true);
         mLabelInfo.setText("Stopped");
         showToast("Stopped");
     }
@@ -529,6 +527,10 @@ public class MainActivity extends AppCompatActivity
             stopRecording();
             mStartStopButton.setText(R.string.start_title);
         }
+    }
+
+    public void scanWifi(View view){
+
     }
 
     private TangoConfig setupTangoConfig(Tango tango){
@@ -984,9 +986,23 @@ public class MainActivity extends AppCompatActivity
             }
         }else if(requestCode == RESULT_CODE_PICK_ADF){
             if(resultCode == RESULT_OK && data != null){
-                String uuid = data.getStringExtra("uuid");
-                String name = data.getStringExtra("name");
                 mConfig = (TangoIMUConfig)data.getSerializableExtra(INTENT_EXTRA_CONFIG);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(mConfig.getAreaLearningMode()){
+                            showToast("Learning mode on");
+                            mLabelInfo.setText("Learning mode");
+                        }
+                        if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
+                            mScanButton.setVisibility(View.VISIBLE);
+                        }else{
+                            mScanButton.setVisibility(View.GONE);
+                        }
+                    }
+                });
+            }else{
+                showToast("resultCode: RESULT_CANCEL");
             }
         }
     }
