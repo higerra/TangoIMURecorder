@@ -2,7 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <CheckBoxPreference
-        android:key="pref_pose_enabled"
+        android:key="@+id/pref_pose_enabled"
         android:title="Enable motion tracking"
         android:defaultValue="true"
         />
@@ -39,7 +39,7 @@
         />
 
     <ListPreference
-        android:key="pref_adf_name"
+        android:key="pref_adf_uuid"
         android:title="Select area description file"
         android:dependency="pref_adf_enabled"
         />

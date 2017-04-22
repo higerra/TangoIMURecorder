@@ -6,12 +6,15 @@ import android.content.BroadcastReceiver;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 
 import android.hardware.SensorEventListener;
 import android.hardware.display.DisplayManager;
 import android.os.Environment;
+import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
@@ -68,10 +71,12 @@ import org.rajawali3d.scene.ASceneFrameCallback;
 
 
 public class MainActivity extends AppCompatActivity
-        implements SensorEventListener, SetAdfNameDialog.CallbackListener, SaveAdfTask.SaveAdfListener{
+        implements SensorEventListener, SetAdfNameDialog.CallbackListener, SaveAdfTask.SaveAdfListener {
 
     private static final String LOG_TAG = MainActivity.class.getName();
     public static final String INTENT_EXTRA_CONFIG = "config";
+    public static final String INTENT_EXTRA_ADF_NAME = "adf_name";
+    public static final String INTENT_EXTRA_ADF_UUID = "adf_uuid";
 
     private static final int REQUEST_CODE_WRITE_EXTERNAL = 1001;
     private static final int REQUEST_CODE_CAMERA = 1002;
@@ -90,6 +95,9 @@ public class MainActivity extends AppCompatActivity
     private Tango mTango;
     private TangoConfig mTangoConfig;
     private TangoUx mTangoUx;
+
+    private ArrayList<String> mAdfNames = new ArrayList<>();
+    private ArrayList<String> mAdfUuids = new ArrayList<>();
 
     private UxExceptionEventListener mUxExceptionEventListener = new UxExceptionEventListener() {
         @Override
@@ -320,7 +328,7 @@ public class MainActivity extends AppCompatActivity
         );
     }
 
-    
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu){
         MenuInflater inflater = getMenuInflater();
@@ -335,9 +343,10 @@ public class MainActivity extends AppCompatActivity
                 if(mIsRecording.get()){
                     break;
                 }
-                Intent intent = new Intent(this, SettingActivity.class);
-                intent.putExtra(INTENT_EXTRA_CONFIG, mConfig);
-                startActivityForResult(intent, RESULT_CODE_PICK_ADF);
+                Intent intent = new Intent(this, PrefActivity.class);
+                intent.putExtra(INTENT_EXTRA_ADF_NAME, mAdfNames);
+                intent.putExtra(INTENT_EXTRA_ADF_UUID, mAdfUuids);
+                startActivity(intent);
                 break;
         }
         return false;
@@ -381,6 +390,10 @@ public class MainActivity extends AppCompatActivity
         mChangeWifiPermissionGranted = checkPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CODE_CHANGE_WIFI);
         mCoarseLocationPermissionGranted = checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, REQUEST_CODE_COARSE_LOCATION);
 
+        updateConfig();
+        if(mIsTangoInitialized.get()) {
+            updateADFList();
+        }
 
         mStartStopButton.setText(R.string.start_title);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
@@ -394,6 +407,53 @@ public class MainActivity extends AppCompatActivity
         registerReceiver(mWifiScanReceiverRef, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
         // prevent screen lock
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    private void updateConfig(){
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
+        mConfig.setPoseEnabled(pref.getBoolean("pref_pose_enabled", true));
+        mConfig.setFileEnabled(pref.getBoolean("pref_file_enabled", true));
+        mConfig.setWifiEnabled(pref.getBoolean("pref_wifi_enabled", true));
+        mConfig.setContinuesWifiScan(pref.getBoolean("pref_auto_wifi_enabled", false));
+        mConfig.setADFEnabled(pref.getBoolean("pref_adf_enabled", false));
+        mConfig.setAreaLearningMode(pref.getBoolean("pref_al_mode", false));
+        mConfig.setADFName(pref.getString("pref_adf_name", ""));
+        mConfig.setADFUuid(pref.getString("pref_adf_uuid", ""));
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mLabelInfo.setText("");
+                if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
+                    mScanButton.setVisibility(View.VISIBLE);
+                }else{
+                    mScanButton.setVisibility(View.INVISIBLE);
+                }
+
+                if(mConfig.getADFEnabled() && !mConfig.getADFName().equals("")){
+                    mLabelInfo.setText(mConfig.getADFName() + " (" + mConfig.getADFUuid() + ") selected");
+                }
+                if(mConfig.getAreaLearningMode()){
+                    mLabelInfo.setText("Area learning mode");
+                }
+            }
+        });
+    }
+
+    private void updateADFList(){
+        TangoAreaDescriptionMetaData metaData = new TangoAreaDescriptionMetaData();
+        mAdfUuids = mTango.listAreaDescriptions();
+        mAdfNames.clear();
+        for(String uuid: mAdfUuids){
+            String name;
+            try {
+                metaData = mTango.loadAreaDescriptionMetaData(uuid);
+            }catch (TangoErrorException e){
+                mAdfNames.add("Unknown");
+            }
+            name = new String(metaData.get(TangoAreaDescriptionMetaData.KEY_NAME));
+            mAdfNames.add(name);
+        }
     }
 
     private void showAlertAndStop(final String text){
@@ -486,6 +546,7 @@ public class MainActivity extends AppCompatActivity
 
     private void stopRecording(){
         mIsRecording.set(false);
+        updateADFList();
         if(mRecorder != null) {
             mRecorder.endFiles();
         }
@@ -983,26 +1044,6 @@ public class MainActivity extends AppCompatActivity
             if(resultCode == RESULT_CANCELED){
                 Toast.makeText(this, "Area learning permission required.", Toast.LENGTH_SHORT).show();
                 finish();
-            }
-        }else if(requestCode == RESULT_CODE_PICK_ADF){
-            if(resultCode == RESULT_OK && data != null){
-                mConfig = (TangoIMUConfig)data.getSerializableExtra(INTENT_EXTRA_CONFIG);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if(mConfig.getAreaLearningMode()){
-                            showToast("Learning mode on");
-                            mLabelInfo.setText("Learning mode");
-                        }
-                        if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
-                            mScanButton.setVisibility(View.VISIBLE);
-                        }else{
-                            mScanButton.setVisibility(View.GONE);
-                        }
-                    }
-                });
-            }else{
-                showToast("resultCode: RESULT_CANCEL");
             }
         }
     }
