@@ -14,6 +14,8 @@ public class TangoIMUConfig implements java.io.Serializable {
     private Boolean mIsADFEnabled = false;
     private Boolean mIsAreaLearningMode = false;
 
+    private int mNumRequestsPerScan = 1;
+
     private String mADFuuid = "";
     private String mADFName = "";
 
@@ -50,6 +52,10 @@ public class TangoIMUConfig implements java.io.Serializable {
         return this.mADFuuid;
     }
 
+    public int getNumRequestsPerScan(){
+        return this.mNumRequestsPerScan;
+    }
+
     public void setPoseEnabled(Boolean v){
         this.mIsPoseEnabled = v;
     }
@@ -80,5 +86,9 @@ public class TangoIMUConfig implements java.io.Serializable {
 
     public void setADFUuid(String v){
         this.mADFuuid = v;
+    }
+
+    public void setNumRequestsPerScan(int v){
+        this.mNumRequestsPerScan = v;
     }
 }

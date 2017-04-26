@@ -59,6 +59,7 @@ public class PrefActivity extends Activity{
         public final static String KEY_UUID = "adf_uuid";
 
         ListPreference mListPreference;
+        ListPreference mListRequestPreference;
 
         public static final PrefFragment newInstance(ArrayList<String> names,
                                                      ArrayList<String> uuids){
@@ -75,6 +76,8 @@ public class PrefActivity extends Activity{
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.preference);
             mListPreference = (ListPreference)findPreference("pref_adf_uuid");
+            mListRequestPreference = (ListPreference)findPreference("pref_num_requests");
+
             try {
                 ArrayList<String> names = getArguments().getStringArrayList(KEY_NAME);
                 ArrayList<String> uuids = getArguments().getStringArrayList(KEY_UUID);
@@ -93,6 +96,9 @@ public class PrefActivity extends Activity{
                 }else{
                     mListPreference.setSummary("Area description file disabled");
                 }
+
+                String num_req = getPreferenceManager().getSharedPreferences().getString("pref_num_requests", "1");
+                mListRequestPreference.setSummary("Requests per scan: " + num_req);
             }catch (NullPointerException e){
                 e.printStackTrace();
             }
@@ -135,6 +141,9 @@ public class PrefActivity extends Activity{
                 }else{
                     mListPreference.setSummary("Invalid ADF: " + uuid);
                 }
+            }else if(key.equals("pref_num_requests")){
+                String value = sharedPreferences.getString("pref_num_requests", "1");
+                mListRequestPreference.setSummary("Requests per scan: " + value);
             }
         }
     }

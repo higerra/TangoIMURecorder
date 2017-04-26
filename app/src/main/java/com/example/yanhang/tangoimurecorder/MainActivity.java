@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.InstrumentationInfo;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 
@@ -181,7 +182,12 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelWifiNums;
 
     private TextView mLabelStepCount;
-    private TextView mLabelInfo;
+
+    private TextView mLabelInfoPose;
+    private TextView mLabelInfoADF;
+    private TextView mLabelInfoAL;
+    private TextView mLabelInfoWifi;
+    private TextView mLabelInfoRedun;
 
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
@@ -300,7 +306,12 @@ public class MainActivity extends AppCompatActivity
         mLabelWifiNums = (TextView)findViewById(R.id.label_wifi_beacon_num);
 
         mLabelStepCount = (TextView)findViewById(R.id.label_step_count);
-        mLabelInfo = (TextView)findViewById(R.id.label_info);
+
+        mLabelInfoPose = (TextView)findViewById(R.id.label_info_pose);
+        mLabelInfoADF = (TextView)findViewById(R.id.label_info_adf);
+        mLabelInfoAL = (TextView)findViewById(R.id.label_info_al);
+        mLabelInfoWifi = (TextView)findViewById(R.id.label_info_wifi);
+        mLabelInfoRedun = (TextView)findViewById(R.id.label_info_redun);
 
         mStartStopButton = (Button)findViewById(R.id.button_start_stop);
         mScanButton = (Button)findViewById(R.id.button_scan);
@@ -423,6 +434,8 @@ public class MainActivity extends AppCompatActivity
         mConfig.setADFEnabled(pref.getBoolean("pref_adf_enabled", false));
         mConfig.setAreaLearningMode(pref.getBoolean("pref_al_mode", false));
         mConfig.setADFUuid(pref.getString("pref_adf_uuid", ""));
+        mConfig.setNumRequestsPerScan(Integer.valueOf(pref.getString("pref_num_requests", "1")));
+
         int index = mAdfUuids.indexOf(mConfig.getADFUuid());
         if(index >= 0 && index < mAdfNames.size()){
             mConfig.setADFName(mAdfNames.get(index));
@@ -433,14 +446,36 @@ public class MainActivity extends AppCompatActivity
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mLabelInfo.setText("");
-                if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
-                    mScanButton.setVisibility(View.VISIBLE);
+                if(mConfig.getPoseEnabled()){
+                    mLabelInfoPose.setText("ON");
                 }else{
-                    mScanButton.setVisibility(View.INVISIBLE);
+                    mLabelInfoPose.setText("OFF");
                 }
+                if(mConfig.getWifiEnabled()){
+                    mLabelInfoRedun.setText(String.valueOf(mConfig.getNumRequestsPerScan()));
+                    if(mConfig.getContinuesWifiScan()) {
+                        mScanButton.setVisibility(View.INVISIBLE);
+                        mLabelInfoWifi.setText("AUTO");
+                    }else{
+                        mScanButton.setVisibility(View.VISIBLE);
+                        mLabelInfoWifi.setText("Manual");
+                    }
+                }else{
+                    mLabelInfoRedun.setText("N/A");
+                    mScanButton.setVisibility(View.INVISIBLE);
+                    mLabelInfoWifi.setText("OFF");
+                }
+
                 if(mConfig.getAreaLearningMode()){
-                    mLabelInfo.setText("Area learning mode");
+                    mLabelInfoAL.setText("ON");
+                }else{
+                    mLabelInfoAL.setText("OFF");
+                }
+
+                if(mConfig.getADFEnabled()){
+                    mLabelInfoADF.setText(mConfig.getADFName());
+                }else{
+                    mLabelInfoADF.setText("OFF");
                 }
             }
         });
@@ -547,7 +582,6 @@ public class MainActivity extends AppCompatActivity
             }
         }
         mInitialStepCount = -1.0f;
-        mLabelInfo.setText("Not localized");
         mIsRecording.set(true);
     }
 
@@ -585,7 +619,6 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        mLabelInfo.setText("Stopped");
         showToast("Stopped");
     }
 
@@ -805,13 +838,7 @@ public class MainActivity extends AppCompatActivity
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
                         if(!mIsLocalizedToADF.get()) {
-                            showToast("Localized to ADF");
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mLabelInfo.setText("Localized to " + mConfig.getADFName());
-                                }
-                            });
+                            showToast("Localized to ADF " + mConfig.getADFName());
                             mIsLocalizedToADF.set(true);
                         }
 
@@ -954,7 +981,10 @@ public class MainActivity extends AppCompatActivity
         }else if(event.sensor.getType() == Sensor.TYPE_STEP_COUNTER){
             if(mIsRecording.get()) {
                 if (mInitialStepCount < 0) {
-                    mInitialStepCount = event.values[0];
+                    mInitialStepCount = event.values[0] - 1;
+                }
+                if(mIsRecording.get() && mIsWriteFile){
+                    mRecorder.addStepRecord(timestamp, (int)(event.values[0] - mInitialStepCount));
                 }
                 runOnUiThread(new Runnable() {
                     @Override

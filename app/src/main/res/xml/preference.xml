@@ -1,47 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <CheckBoxPreference
-        android:key="@+id/pref_pose_enabled"
-        android:title="Enable motion tracking"
-        android:defaultValue="true"
-        />
+    <PreferenceCategory
+        android:title="Motion Tracking"
+        android:id="@+id/pref_cate_motion_tracking">
+        <CheckBoxPreference
+            android:key="@+id/pref_pose_enabled"
+            android:title="Enable motion tracking"
+            android:defaultValue="true"
+            />
 
-    <CheckBoxPreference
-        android:key="pref_file_enabled"
-        android:title="Write files"
-        android:summary="Stream to external storage"
-        android:defaultValue="true"
-        />
+        <CheckBoxPreference
+            android:key="pref_al_mode"
+            android:dependency="@id/pref_pose_enabled"
+            android:title="Area learning mode"
+            />
 
-    <CheckBoxPreference
-        android:key="pref_wifi_enabled"
-        android:title="Enable Wifi"
-        android:summary="Scan Wifi footprints"
-        android:defaultValue="true"
-        />
-    <CheckBoxPreference
-        android:key="pref_auto_wifi_enabled"
-        android:dependency="pref_wifi_enabled"
-        android:title="Continues Wifi scanning"
-        android:defaultValue="false"
-        />
+        <CheckBoxPreference
+            android:key="pref_adf_enabled"
+            android:dependency="@id/pref_pose_enabled"
+            android:title="Load Area Description File"
+            android:defaultValue="false"
+            />
 
-    <CheckBoxPreference
-        android:key="pref_al_mode"
-        android:title="Area learning mode"
-        />
+        <ListPreference
+            android:key="pref_adf_uuid"
+            android:title="Select area description file"
+            android:dependency="pref_adf_enabled"
+            />
+    </PreferenceCategory>
 
-    <CheckBoxPreference
-        android:key="pref_adf_enabled"
-        android:title="Load Area Description File"
-        android:defaultValue="false"
-        />
+    <PreferenceCategory
+        android:title="Wifi Scanning"
+        android:id="@+id/pref_cate_wifi">
 
-    <ListPreference
-        android:key="pref_adf_uuid"
-        android:title="Select area description file"
-        android:dependency="pref_adf_enabled"
-        />
+        <CheckBoxPreference
+            android:key="pref_wifi_enabled"
+            android:title="Enable Wifi"
+            android:summary="Scan Wifi footprints"
+            android:defaultValue="true"
+            />
+        <CheckBoxPreference
+            android:key="pref_auto_wifi_enabled"
+            android:dependency="pref_wifi_enabled"
+            android:title="Continues Wifi scanning"
+            android:defaultValue="false"
+            />
+
+        <ListPreference
+            android:key="pref_num_requests"
+            android:dependency="pref_wifi_enabled"
+            android:entries="@array/list_requests_entries"
+            android:entryValues="@array/list_requests_values"
+            android:summary="1 requests per scan"
+            android:defaultValue="1"
+            android:title="Number of requests per scan"/>
+
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="File Writing">
+        <CheckBoxPreference
+            android:key="pref_file_enabled"
+            android:title="Write files"
+            android:summary="Stream to external storage"
+            android:defaultValue="true"
+            />
+    </PreferenceCategory>
 
 </PreferenceScreen>

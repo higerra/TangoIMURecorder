@@ -224,17 +224,72 @@
         android:layout_alignParentEnd="true"
         android:text="Scan"
         android:onClick="scanWifi"/>
-    <TextView
-        android:id="@+id/label_info"
+
+    <GridLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
         android:layout_marginTop="10dp"
-        android:layout_marginStart="10dp"
-        android:textSize="14sp"
-        android:text="info"
-        />
+        android:columnCount="2"
+        android:rowCount="5">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Motion tracking: "/>
+        <TextView
+            android:id="@+id/label_info_pose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Area descriptor: "/>
+        <TextView
+            android:id="@+id/label_info_adf"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Area learning: "/>
+        <TextView
+            android:id="@+id/label_info_al"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Wifi scanning: "/>
+        <TextView
+            android:id="@+id/label_info_wifi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Wifi redundancy: "/>
+        <TextView
+            android:id="@+id/label_info_redun"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1"/>
+
+    </GridLayout>
 
     <com.google.atap.tango.ux.TangoUxLayout
         android:id="@+id/layout_tango"
