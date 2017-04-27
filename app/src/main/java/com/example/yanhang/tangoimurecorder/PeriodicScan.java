@@ -25,25 +25,32 @@ import java.util.Calendar;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PeriodicScan implements Runnable{
-    private int scan_interval_ = 3000;
     static final String LOG_TAG = "PerodicScan";
+    static final int DEFAULT_INTERVAL = 3000;
+    static final int DEFAULT_REDUNDANCY = 1;
+
+    private int scan_interval_ = DEFAULT_INTERVAL;
+    private int redundancy_ = DEFAULT_REDUNDANCY;
 
     private final MainActivity parent_;
     private final Runnable receive_callback_;
-
     private Handler handler_ = new Handler();
     private AtomicBoolean is_running_ = new AtomicBoolean(false);
-    private AtomicBoolean is_single_scan_ = new AtomicBoolean(false);
+    private AtomicInteger redundant_counter_ = new AtomicInteger(0);
 
     private WifiManager wifi_manager_;
     ArrayList<ArrayList<String> > scan_results_ = new ArrayList<>();
     BroadcastReceiver scan_receiver_ = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(is_single_scan_.get()){
-                is_single_scan_.set(false);
+            if(redundant_counter_.get() > 0){
+                redundant_counter_.set(redundant_counter_.get() - 1);
+                if(redundant_counter_.get() > 0) {
+                    wifi_manager_.startScan();
+                }
             }else {
                 if (!is_running_.get()) {
                     return;
@@ -56,26 +63,30 @@ public class PeriodicScan implements Runnable{
                 current_record.add(str);
             }
             scan_results_.add(current_record);
-            if(receive_callback_ != null){
+            if (receive_callback_ != null) {
                 parent_.runOnUiThread(receive_callback_);
             }
         }
     };
 
-    PeriodicScan(@NonNull MainActivity parent, Runnable receive_callback, int interval){
+    PeriodicScan(@NonNull MainActivity parent, Runnable receive_callback, int interval, int redun){
         this.parent_ = parent;
         this.receive_callback_ = receive_callback;
         this.scan_interval_ = interval;
-
+        this.redundancy_ = redun;
         wifi_manager_ = (WifiManager)parent.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     }
 
+    PeriodicScan(@NonNull MainActivity parent, Runnable receive_callback, int interval){
+        this(parent, receive_callback, interval, DEFAULT_REDUNDANCY);
+    }
+
     PeriodicScan(@NonNull MainActivity parent, Runnable receive_callback){
-        this(parent, receive_callback, 3000);
+        this(parent, receive_callback, DEFAULT_INTERVAL, DEFAULT_REDUNDANCY);
     }
 
     PeriodicScan(@NonNull MainActivity parent){
-        this(parent, null, 3000);
+        this(parent, null, DEFAULT_INTERVAL, DEFAULT_INTERVAL);
     }
 
     BroadcastReceiver getBroadcastReceiver(){
@@ -84,6 +95,10 @@ public class PeriodicScan implements Runnable{
 
     WifiManager getWifiManager(){
         return wifi_manager_;
+    }
+
+    public void setRedundancy(int v){
+        redundancy_ = v;
     }
 
     public void setScanInterval(int new_interval){
@@ -148,10 +163,12 @@ public class PeriodicScan implements Runnable{
     public void terminate(){
         handler_.removeCallbacks(null);
         is_running_.set(false);
+        redundant_counter_.set(0);
     }
 
     public void start(){
         is_running_.set(true);
+        redundant_counter_.set(0);
         run();
     }
 
@@ -159,8 +176,12 @@ public class PeriodicScan implements Runnable{
         if(!wifi_manager_.isWifiEnabled()){
             wifi_manager_.setWifiEnabled(true);
         }
-        wifi_manager_.startScan();
-        is_single_scan_.set(true);
+        redundant_counter_.set(redundancy_);
+        if(wifi_manager_.startScan()){
+            Log.i(LOG_TAG, "Scan request sent...");
+        }else{
+            Log.i(LOG_TAG, "Scan request failed");
+        }
     }
 
     @Override
@@ -168,7 +189,8 @@ public class PeriodicScan implements Runnable{
         if(!wifi_manager_.isWifiEnabled()){
             wifi_manager_.setWifiEnabled(true);
         }
-        wifi_manager_.startScan();
+        // wifi_manager_.startScan();
+        singleScan();
         if(is_running_.get()) {
             handler_.postDelayed(this, scan_interval_);
         }

@@ -542,17 +542,23 @@ public class MainActivity extends AppCompatActivity
         }
 
         // initialize Wifi
-        if(mConfig.getWifiEnabled() && mConfig.getContinuesWifiScan()){
+        if(mConfig.getWifiEnabled()){
             if(!mWifiMangerRef.isWifiEnabled()){
                 showAlertAndStop("Turn on wifi first");
+                return;
             }
             wifi_scanner_.reset();
-            wifi_scanner_.start();
+            Log.i(LOG_TAG, "Configured redundancy: " + String.valueOf(mConfig.getNumRequestsPerScan()));
+            wifi_scanner_.setRedundancy(mConfig.getNumRequestsPerScan());
+            if(mConfig.getContinuesWifiScan()) {
+                wifi_scanner_.start();
+            }
         }
 
         if(mConfig.getPoseEnabled()) {
             if(!mIsTangoInitialized.get()){
                 showAlertAndStop("Tango not initialized");
+                return;
             }
             // initialize tango service
             synchronized (this) {

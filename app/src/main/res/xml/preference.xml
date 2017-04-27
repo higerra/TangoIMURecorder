@@ -5,20 +5,20 @@
         android:title="Motion Tracking"
         android:id="@+id/pref_cate_motion_tracking">
         <CheckBoxPreference
-            android:key="@+id/pref_pose_enabled"
+            android:key="pref_pose_enabled"
             android:title="Enable motion tracking"
             android:defaultValue="true"
             />
 
         <CheckBoxPreference
             android:key="pref_al_mode"
-            android:dependency="@id/pref_pose_enabled"
+            android:dependency="pref_pose_enabled"
             android:title="Area learning mode"
             />
 
         <CheckBoxPreference
             android:key="pref_adf_enabled"
-            android:dependency="@id/pref_pose_enabled"
+            android:dependency="pref_pose_enabled"
             android:title="Load Area Description File"
             android:defaultValue="false"
             />
