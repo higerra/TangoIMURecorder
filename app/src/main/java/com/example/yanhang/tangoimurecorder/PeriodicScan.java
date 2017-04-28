@@ -133,6 +133,7 @@ public class PeriodicScan implements Runnable{
                 scan_intent.setData(Uri.fromFile(file));
                 parent_.sendBroadcast(scan_intent);
                 writer.write(header);
+                writer.write(String.valueOf(redundancy_) + '\n');
                 writer.write(String.valueOf(scan_results_.size()) + '\n');
                 for (ArrayList<String> record : scan_results_) {
                     writer.write(String.valueOf(record.size()) + '\n');
