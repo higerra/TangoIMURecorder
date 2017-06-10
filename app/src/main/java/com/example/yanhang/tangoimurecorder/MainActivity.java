@@ -972,14 +972,14 @@ public class MainActivity extends AppCompatActivity
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ROTATION_VECTOR);
             }
         }else if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
-//            mUIHandler.post(new Runnable() {
-//                @Override
-//                public void run() {
-//                    mLabelMx.setText(String.format(Locale.US, "%.6f", event.values[0]));
-//                    mLabelMy.setText(String.format(Locale.US, "%.6f", event.values[1]));
-//                    mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
-//                }
-//            });
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mLabelMx.setText(String.format(Locale.US, "%.6f", event.values[0]));
+                    mLabelMy.setText(String.format(Locale.US, "%.6f", event.values[1]));
+                    mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
+                }
+            });
             if(mIsRecording.get() && mIsWriteFile){
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.MAGNETOMETER);
