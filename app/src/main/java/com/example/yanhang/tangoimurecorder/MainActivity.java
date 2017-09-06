@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity
     };
 
     private PoseIMURecorder mRecorder;
+    private OutputDirectoryManager mOutputDirectoryManager;
     private MotionRajawaliRenderer mRenderer;
     private org.rajawali3d.surface.RajawaliSurfaceView mSurfaceView;
 
@@ -230,12 +231,12 @@ public class MainActivity extends AppCompatActivity
                     try {
                         TangoSupport.initialize();
                         mIsTangoInitialized.set(true);
-                    }catch(TangoOutOfDateException e){
+                    } catch (TangoOutOfDateException e) {
                         Log.e(LOG_TAG, "Out of date");
-                    }catch(TangoErrorException e){
+                    } catch (TangoErrorException e) {
                         Log.e(LOG_TAG, "Tango error");
-                    }catch(TangoInvalidException e){
-                        Log.e(LOG_TAG,"Tango exception");
+                    } catch (TangoInvalidException e) {
+                        Log.e(LOG_TAG, "Tango exception");
                     }
                 }
             }
@@ -249,7 +250,7 @@ public class MainActivity extends AppCompatActivity
         setupRenderer();
 
         DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
-        if(displayManager != null){
+        if (displayManager != null) {
             displayManager.registerDisplayListener(new DisplayManager.DisplayListener() {
                 @Override
                 public void onDisplayAdded(int displayId) {
@@ -258,7 +259,7 @@ public class MainActivity extends AppCompatActivity
 
                 @Override
                 public void onDisplayRemoved(int displayId) {
-                    synchronized (this){
+                    synchronized (this) {
                         setAndroidOrientation();
                     }
                 }
@@ -271,7 +272,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         // initialize IMU sensor
-        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mGravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
@@ -282,39 +283,39 @@ public class MainActivity extends AppCompatActivity
         mStepCounter = mSensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
 
         // initialize UI widgets
-        mLabelRx = (TextView)findViewById(R.id.label_rx);
-        mLabelRy = (TextView)findViewById(R.id.label_ry);
-        mLabelRz = (TextView)findViewById(R.id.label_rz);
-        mLabelAx = (TextView)findViewById(R.id.label_ax);
-        mLabelAy = (TextView)findViewById(R.id.label_ay);
-        mLabelAz = (TextView)findViewById(R.id.label_az);
-        mLabelLx = (TextView)findViewById(R.id.label_lx);
-        mLabelLy = (TextView)findViewById(R.id.label_ly);
-        mLabelLz = (TextView)findViewById(R.id.label_lz);
-        mLabelGx = (TextView)findViewById(R.id.label_gx);
-        mLabelGy = (TextView)findViewById(R.id.label_gy);
-        mLabelGz = (TextView)findViewById(R.id.label_gz);
+        mLabelRx = (TextView) findViewById(R.id.label_rx);
+        mLabelRy = (TextView) findViewById(R.id.label_ry);
+        mLabelRz = (TextView) findViewById(R.id.label_rz);
+        mLabelAx = (TextView) findViewById(R.id.label_ax);
+        mLabelAy = (TextView) findViewById(R.id.label_ay);
+        mLabelAz = (TextView) findViewById(R.id.label_az);
+        mLabelLx = (TextView) findViewById(R.id.label_lx);
+        mLabelLy = (TextView) findViewById(R.id.label_ly);
+        mLabelLz = (TextView) findViewById(R.id.label_lz);
+        mLabelGx = (TextView) findViewById(R.id.label_gx);
+        mLabelGy = (TextView) findViewById(R.id.label_gy);
+        mLabelGz = (TextView) findViewById(R.id.label_gz);
 //        mLabelOw = (TextView)findViewById(R.id.label_ow);
 //        mLabelOx = (TextView)findViewById(R.id.label_ox);
 //        mLabelOy = (TextView)findViewById(R.id.label_oy);
 //        mLabelOz = (TextView)findViewById(R.id.label_oz);
-        mLabelMx = (TextView)findViewById(R.id.label_mx);
-        mLabelMy = (TextView)findViewById(R.id.label_my);
-        mLabelMz = (TextView)findViewById(R.id.label_mz);
+        mLabelMx = (TextView) findViewById(R.id.label_mx);
+        mLabelMy = (TextView) findViewById(R.id.label_my);
+        mLabelMz = (TextView) findViewById(R.id.label_mz);
 
-        mLabelScanTimes = (TextView)findViewById(R.id.label_wifi_record_num);
-        mLabelWifiNums = (TextView)findViewById(R.id.label_wifi_beacon_num);
+        mLabelScanTimes = (TextView) findViewById(R.id.label_wifi_record_num);
+        mLabelWifiNums = (TextView) findViewById(R.id.label_wifi_beacon_num);
 
-        mLabelStepCount = (TextView)findViewById(R.id.label_step_count);
+        mLabelStepCount = (TextView) findViewById(R.id.label_step_count);
 
-        mLabelInfoPose = (TextView)findViewById(R.id.label_info_pose);
-        mLabelInfoADF = (TextView)findViewById(R.id.label_info_adf);
-        mLabelInfoAL = (TextView)findViewById(R.id.label_info_al);
-        mLabelInfoWifi = (TextView)findViewById(R.id.label_info_wifi);
-        mLabelInfoRedun = (TextView)findViewById(R.id.label_info_redun);
+        mLabelInfoPose = (TextView) findViewById(R.id.label_info_pose);
+        mLabelInfoADF = (TextView) findViewById(R.id.label_info_adf);
+        mLabelInfoAL = (TextView) findViewById(R.id.label_info_al);
+        mLabelInfoWifi = (TextView) findViewById(R.id.label_info_wifi);
+        mLabelInfoRedun = (TextView) findViewById(R.id.label_info_redun);
 
-        mStartStopButton = (Button)findViewById(R.id.button_start_stop);
-        mScanButton = (Button)findViewById(R.id.button_scan);
+        mStartStopButton = (Button) findViewById(R.id.button_start_stop);
+        mScanButton = (Button) findViewById(R.id.button_scan);
         mScanButton.setVisibility(View.GONE);
 
         updateConfig();
@@ -327,7 +328,7 @@ public class MainActivity extends AppCompatActivity
                     public void run() {
                         mLabelScanTimes.setText(String.valueOf(wifi_scanner_.getRecordCount()));
                         mLabelWifiNums.setText(String.valueOf(wifi_scanner_.getLatestScanResult().size()));
-                        if(mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()){
+                        if (mConfig.getWifiEnabled() && !mConfig.getContinuesWifiScan()) {
                             mScanButton.setEnabled(true);
                         }
                     }
@@ -346,17 +347,17 @@ public class MainActivity extends AppCompatActivity
 
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu){
+    public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.option_menu, menu);
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item){
-        switch(item.getItemId()){
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
             case R.id.menu_setting:
-                if(mIsRecording.get()){
+                if (mIsRecording.get()) {
                     break;
                 }
                 Intent intent = new Intent(this, PrefActivity.class);
@@ -369,20 +370,20 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onPrepareOptionsMenu(Menu menu){
+    public boolean onPrepareOptionsMenu(Menu menu) {
         //getMenuInflater().inflate(R.menu.option_menu, menu);
-        if(mIsRecording.get()){
+        if (mIsRecording.get()) {
             menu.getItem(0).setEnabled(false);
-        }else {
+        } else {
             menu.getItem(0).setEnabled(true);
         }
         return true;
     }
 
     @Override
-    protected void onPause(){
+    protected void onPause() {
         super.onPause();
-        if(mIsRecording.get()) {
+        if (mIsRecording.get()) {
             stopRecording();
         }
         mSensorManager.unregisterListener(this, mAccelerometer);
@@ -398,7 +399,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    protected void onResume(){
+    protected void onResume() {
         super.onResume();
         mStoragePermissionGranted = checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_CODE_WRITE_EXTERNAL);
         mCameraPermissionGranted = checkPermission(Manifest.permission.CAMERA, REQUEST_CODE_CAMERA);
@@ -407,7 +408,7 @@ public class MainActivity extends AppCompatActivity
         mCoarseLocationPermissionGranted = checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, REQUEST_CODE_COARSE_LOCATION);
 
         updateConfig();
-        if(mIsTangoInitialized.get()) {
+        if (mIsTangoInitialized.get()) {
             updateADFList();
         }
 
@@ -425,7 +426,7 @@ public class MainActivity extends AppCompatActivity
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
-    private void updateConfig(){
+    private void updateConfig() {
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
         mConfig.setPoseEnabled(pref.getBoolean("pref_pose_enabled", true));
         mConfig.setFileEnabled(pref.getBoolean("pref_file_enabled", true));
@@ -437,59 +438,59 @@ public class MainActivity extends AppCompatActivity
         mConfig.setNumRequestsPerScan(Integer.valueOf(pref.getString("pref_num_requests", "1")));
 
         int index = mAdfUuids.indexOf(mConfig.getADFUuid());
-        if(index >= 0 && index < mAdfNames.size()){
+        if (index >= 0 && index < mAdfNames.size()) {
             mConfig.setADFName(mAdfNames.get(index));
-        }else{
+        } else {
             mConfig.setADFName(mConfig.getADFUuid());
         }
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if(mConfig.getPoseEnabled()){
+                if (mConfig.getPoseEnabled()) {
                     mLabelInfoPose.setText("ON");
-                }else{
+                } else {
                     mLabelInfoPose.setText("OFF");
                 }
-                if(mConfig.getWifiEnabled()){
+                if (mConfig.getWifiEnabled()) {
                     mLabelInfoRedun.setText(String.valueOf(mConfig.getNumRequestsPerScan()));
-                    if(mConfig.getContinuesWifiScan()) {
+                    if (mConfig.getContinuesWifiScan()) {
                         mScanButton.setVisibility(View.INVISIBLE);
                         mLabelInfoWifi.setText("AUTO");
-                    }else{
+                    } else {
                         mScanButton.setVisibility(View.VISIBLE);
                         mLabelInfoWifi.setText("Manual");
                     }
-                }else{
+                } else {
                     mLabelInfoRedun.setText("N/A");
                     mScanButton.setVisibility(View.INVISIBLE);
                     mLabelInfoWifi.setText("OFF");
                 }
 
-                if(mConfig.getAreaLearningMode()){
+                if (mConfig.getAreaLearningMode()) {
                     mLabelInfoAL.setText("ON");
-                }else{
+                } else {
                     mLabelInfoAL.setText("OFF");
                 }
 
-                if(mConfig.getADFEnabled()){
+                if (mConfig.getADFEnabled()) {
                     mLabelInfoADF.setText(mConfig.getADFName());
-                }else{
+                } else {
                     mLabelInfoADF.setText("OFF");
                 }
             }
         });
     }
 
-    private void updateADFList(){
+    private void updateADFList() {
         TangoAreaDescriptionMetaData metaData = new TangoAreaDescriptionMetaData();
         mAdfUuids = mTango.listAreaDescriptions();
         mAdfNames.clear();
-        for(String uuid: mAdfUuids){
+        for (String uuid : mAdfUuids) {
             String name;
             try {
                 metaData = mTango.loadAreaDescriptionMetaData(uuid);
-            }catch (TangoErrorException e){
+            } catch (TangoErrorException e) {
                 mAdfNames.add("Unknown");
             }
             name = new String(metaData.get(TangoAreaDescriptionMetaData.KEY_NAME));
@@ -498,7 +499,7 @@ public class MainActivity extends AppCompatActivity
         updateConfig();
     }
 
-    private void showAlertAndStop(final String text){
+    private void showAlertAndStop(final String text) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -515,7 +516,7 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    private void showToast(final String text){
+    private void showToast(final String text) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -523,40 +524,41 @@ public class MainActivity extends AppCompatActivity
             }
         });
     }
-    private void startNewRecording(){
-        if(!mStoragePermissionGranted){
+
+    private void startNewRecording() {
+        if (!mStoragePermissionGranted) {
             showAlertAndStop("Storage permission not granted");
             return;
         }
-        if(!mCameraPermissionGranted){
+        if (!mCameraPermissionGranted) {
             showAlertAndStop("Camera permission not granted");
             return;
         }
-        if(mConfig.getWifiEnabled() && (!mAccessWifiPermissionGranted || !mChangeWifiPermissionGranted)){
+        if (mConfig.getWifiEnabled() && (!mAccessWifiPermissionGranted || !mChangeWifiPermissionGranted)) {
             showAlertAndStop("Wifi permission not granted");
             return;
         }
-        if(mConfig.getWifiEnabled() && !mCoarseLocationPermissionGranted){
+        if (mConfig.getWifiEnabled() && !mCoarseLocationPermissionGranted) {
             showAlertAndStop("Location permission not granted");
             return;
         }
 
         // initialize Wifi
-        if(mConfig.getWifiEnabled()){
-            if(!mWifiMangerRef.isWifiEnabled()){
+        if (mConfig.getWifiEnabled()) {
+            if (!mWifiMangerRef.isWifiEnabled()) {
                 showAlertAndStop("Turn on wifi first");
                 return;
             }
             wifi_scanner_.reset();
             Log.i(LOG_TAG, "Configured redundancy: " + String.valueOf(mConfig.getNumRequestsPerScan()));
             wifi_scanner_.setRedundancy(mConfig.getNumRequestsPerScan());
-            if(mConfig.getContinuesWifiScan()) {
+            if (mConfig.getContinuesWifiScan()) {
                 wifi_scanner_.start();
             }
         }
 
-        if(mConfig.getPoseEnabled()) {
-            if(!mIsTangoInitialized.get()){
+        if (mConfig.getPoseEnabled()) {
+            if (!mIsTangoInitialized.get()) {
                 showAlertAndStop("Tango not initialized");
                 return;
             }
@@ -570,10 +572,10 @@ public class MainActivity extends AppCompatActivity
             }
         }
         // initialize recorder
-        if(mConfig.getFileEnabled()) {
+        if (mConfig.getFileEnabled()) {
             try {
-                String output_dir = setupOutputFolder();
-                mRecorder = new PoseIMURecorder(output_dir, this);
+                mOutputDirectoryManager = new OutputDirectoryManager();
+                mRecorder = new PoseIMURecorder(mOutputDirectoryManager.getOutputDirectory(), this);
             } catch (FileNotFoundException e) {
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle(R.string.alert_title)
@@ -591,18 +593,18 @@ public class MainActivity extends AppCompatActivity
         mIsRecording.set(true);
     }
 
-    private void stopRecording(){
+    private void stopRecording() {
         mIsRecording.set(false);
         updateADFList();
-        if(mRecorder != null) {
+        if (mRecorder != null) {
             mRecorder.endFiles();
         }
 
-        if(mConfig.getWifiEnabled()) {
-            if(mConfig.getContinuesWifiScan()) {
+        if (mConfig.getWifiEnabled()) {
+            if (mConfig.getContinuesWifiScan()) {
                 wifi_scanner_.terminate();
             }
-            if(mConfig.getFileEnabled()) {
+            if (mConfig.getFileEnabled()) {
                 wifi_scanner_.saveResultToFile(mRecorder.getOutputDir() + "/wifi.txt");
             }
         }
@@ -613,9 +615,9 @@ public class MainActivity extends AppCompatActivity
 //                    mTango.disconnectCamera(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 //                    mConnectedTextureIdGlThread = INVALID_TEXTURE_ID;
                     mTangoUx.stop();
-                    if(mConfig.getAreaLearningMode()){
+                    if (mConfig.getAreaLearningMode()) {
                         showSetAdfNameDialog();
-                    }else{
+                    } else {
                         mTango.disconnect();
                         mIsConnected.set(false);
                     }
@@ -628,40 +630,40 @@ public class MainActivity extends AppCompatActivity
         showToast("Stopped");
     }
 
-    public void startStopRecording(View view){
-        if(!mIsRecording.get()){
+    public void startStopRecording(View view) {
+        if (!mIsRecording.get()) {
             startNewRecording();
             mStartStopButton.setText(R.string.stop_title);
-        }else{
+        } else {
             stopRecording();
             mStartStopButton.setText(R.string.start_title);
         }
     }
 
-    public void scanWifi(View view){
+    public void scanWifi(View view) {
         wifi_scanner_.singleScan();
         mScanButton.setEnabled(false);
     }
 
-    private TangoConfig setupTangoConfig(Tango tango){
+    private TangoConfig setupTangoConfig(Tango tango) {
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
         config.putBoolean(TangoConfig.KEY_BOOLEAN_HIGH_RATE_POSE, true);
-        if(mConfig.getAreaLearningMode()){
+        if (mConfig.getAreaLearningMode()) {
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
         }
-        if(mConfig.getADFEnabled() && mConfig.getADFUuid() != null){
+        if (mConfig.getADFEnabled() && mConfig.getADFUuid() != null) {
             try {
                 config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, mConfig.getADFUuid());
                 Log.i(LOG_TAG, mConfig.getADFUuid() + " loaded");
-            }catch (TangoErrorException e){
+            } catch (TangoErrorException e) {
                 Log.e(LOG_TAG, e.getMessage());
             }
         }
         return config;
     }
 
-    private TangoUx setupTangoUx(){
+    private TangoUx setupTangoUx() {
         TangoUx tangoUx = new TangoUx(this);
         tangoUx.setUxExceptionEventListener(mUxExceptionEventListener);
         TangoUxLayout uxLayout = (TangoUxLayout) findViewById(R.id.layout_tango);
@@ -669,56 +671,41 @@ public class MainActivity extends AppCompatActivity
         return tangoUx;
     }
 
-    private String setupOutputFolder() throws FileNotFoundException{
-        Calendar current_time = Calendar.getInstance();
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddhhmmss");
-        File external_dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File output_dir = new File(external_dir.getAbsolutePath() + "/" + formatter.format(current_time.getTime()));
-        if(!output_dir.exists()) {
-            if (!output_dir.mkdir()) {
-                Log.e(LOG_TAG, "Can not create output directory");
-                throw new FileNotFoundException();
-            }
-        }
-        Log.i(LOG_TAG, "Output directory: " + output_dir.getAbsolutePath());
-        return output_dir.getAbsolutePath();
-    }
-
-    private void setupRenderer(){
+    private void setupRenderer() {
         // motion renderer
         mSurfaceView.setEGLContextClientVersion(2);
         mRenderer.getCurrentScene().registerFrameCallback(new ASceneFrameCallback() {
             @Override
             public void onPreFrame(long sceneTime, double deltaTime) {
-                synchronized (MainActivity.this){
+                synchronized (MainActivity.this) {
                     // Don't execute any tango API actions if we're not connected to the service
-                    if (!mIsConnected.get()){
+                    if (!mIsConnected.get()) {
                         return;
                     }
 
                     // Update current camera pose
-                    try{
+                    try {
                         TangoPoseData lastFramePose;
-                        if(mConfig.getADFEnabled()){
-                            lastFramePose =TangoSupport.getPoseAtTime(0,
+                        if (mConfig.getADFEnabled()) {
+                            lastFramePose = TangoSupport.getPoseAtTime(0,
                                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                                     TangoPoseData.COORDINATE_FRAME_DEVICE,
                                     TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
-                        }else{
-                            lastFramePose =TangoSupport.getPoseAtTime(0,
+                        } else {
+                            lastFramePose = TangoSupport.getPoseAtTime(0,
                                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
                                     TangoPoseData.COORDINATE_FRAME_DEVICE,
                                     TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
                         }
                         mRenderer.updateCameraPose(lastFramePose);
-                    }catch (TangoErrorException e){
+                    } catch (TangoErrorException e) {
                         Log.e(LOG_TAG, "Could not get valid transform");
                     }
                 }
             }
 
             @Override
-            public boolean callPreFrame(){
+            public boolean callPreFrame() {
                 return true;
             }
 
@@ -765,7 +752,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    private void resetUI(){
+    private void resetUI() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -777,18 +764,18 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent motionEvent){
+    public boolean onTouchEvent(MotionEvent motionEvent) {
         mRenderer.onTouchEvent(motionEvent);
         return true;
     }
 
-    private void setAndroidOrientation(){
+    private void setAndroidOrientation() {
         Display display = getWindowManager().getDefaultDisplay();
         Camera.CameraInfo depthCameraInfo = new Camera.CameraInfo();
         Camera.getCameraInfo(1, depthCameraInfo);
 
         int depthCameraRotation = Surface.ROTATION_0;
-        switch(depthCameraInfo.orientation){
+        switch (depthCameraInfo.orientation) {
             case 90:
                 depthCameraRotation = Surface.ROTATION_90;
                 break;
@@ -801,14 +788,14 @@ public class MainActivity extends AppCompatActivity
         }
 
         mCameraToDisplayRotation = display.getRotation() - depthCameraRotation;
-        if(mCameraToDisplayRotation < 0){
+        if (mCameraToDisplayRotation < 0) {
             mCameraToDisplayRotation += 4;
         }
     }
 
-    private void startupTango(){
+    private void startupTango() {
         ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
-        if(mConfig.getADFEnabled()){
+        if (mConfig.getADFEnabled()) {
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_DEVICE
@@ -817,7 +804,7 @@ public class MainActivity extends AppCompatActivity
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
             ));
-        }else {
+        } else {
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
                     TangoPoseData.COORDINATE_FRAME_DEVICE
@@ -828,32 +815,32 @@ public class MainActivity extends AppCompatActivity
         mTango.connectListener(framePairs, new OnTangoUpdateListener() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {
-                if(mTangoUx != null){
+                if (mTangoUx != null) {
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
 
-                if(mConfig.getADFEnabled()){
-                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                if (mConfig.getADFEnabled()) {
+                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
-                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
-                        if(mIsRecording.get() && mConfig.getFileEnabled()) {
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
+                        if (mIsRecording.get() && mConfig.getFileEnabled()) {
                             mRecorder.addPoseRecord(tangoPoseData);
                         }
                     }
-                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
-                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
-                        if(!mIsLocalizedToADF.get()) {
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
+                        if (!mIsLocalizedToADF.get()) {
                             showToast("Localized to ADF " + mConfig.getADFName());
                             mIsLocalizedToADF.set(true);
                         }
 
                     }
-                }else{
-                    if(tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+                } else {
+                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
-                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
-                        if(mIsRecording.get() && mConfig.getFileEnabled()) {
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
+                        if (mIsRecording.get() && mConfig.getFileEnabled()) {
                             mRecorder.addPoseRecord(tangoPoseData);
                         }
                     }
@@ -861,7 +848,7 @@ public class MainActivity extends AppCompatActivity
             }
 
             @Override
-            public void onFrameAvailable(int cameraID){
+            public void onFrameAvailable(int cameraID) {
 //                Log.i(LOG_TAG, "onFrameAvailable called");
 //                if(cameraID == mRenderedTexture){
 //                    if(mVideoSurfaceView.getRenderMode() != GLSurfaceView.RENDERMODE_WHEN_DIRTY){
@@ -874,19 +861,19 @@ public class MainActivity extends AppCompatActivity
             }
 
             @Override
-            public void onXyzIjAvailable(TangoXyzIjData xyzIj){
+            public void onXyzIjAvailable(TangoXyzIjData xyzIj) {
 
             }
 
             @Override
-            public void onPointCloudAvailable(final TangoPointCloudData pointCloudData){
+            public void onPointCloudAvailable(final TangoPointCloudData pointCloudData) {
 
             }
 
 
             @Override
             public void onTangoEvent(TangoEvent tangoEvent) {
-                if(mTangoUx != null){
+                if (mTangoUx != null) {
                     mTangoUx.updateTangoEvent(tangoEvent);
                 }
             }
@@ -895,16 +882,16 @@ public class MainActivity extends AppCompatActivity
 
     // receive IMU data
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy){
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
 
     @Override
-    public void onSensorChanged(final SensorEvent event){
+    public void onSensorChanged(final SensorEvent event) {
         long timestamp = event.timestamp;
         float[] values = {0.0f, 0.0f, 0.0f, 0.0f};
         final Boolean mIsWriteFile = mConfig.getFileEnabled();
-        if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -913,11 +900,11 @@ public class MainActivity extends AppCompatActivity
                     mLabelAz.setText(String.format(Locale.US, "%.6f", event.values[2]));
                 }
             });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ACCELEROMETER);
             }
-        }else if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
+        } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -926,12 +913,11 @@ public class MainActivity extends AppCompatActivity
                     mLabelRz.setText(String.format(Locale.US, "%.6f", event.values[2]));
                 }
             });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.GYROSCOPE);
             }
-        }
-        else if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
+        } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -940,11 +926,11 @@ public class MainActivity extends AppCompatActivity
                     mLabelLz.setText(String.format(Locale.US, "%.6f", event.values[2]));
                 }
             });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.LINEAR_ACCELERATION);
             }
-        }else if(event.sensor.getType() == Sensor.TYPE_GRAVITY){
+        } else if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
 //            mUIHandler.post(new Runnable() {
 //                @Override
 //                public void run() {
@@ -953,11 +939,11 @@ public class MainActivity extends AppCompatActivity
 //                    mLabelGz.setText(String.format(Locale.US, "%.6f", event.values[2]));
 //                }
 //            });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.GRAVITY);
             }
-        }else if(event.sensor.getType() == ROTATION_SENSOR){
+        } else if (event.sensor.getType() == ROTATION_SENSOR) {
 //            mUIHandler.post(new Runnable() {
 //                @Override
 //                public void run() {
@@ -967,11 +953,11 @@ public class MainActivity extends AppCompatActivity
 //                    mLabelOz.setText(String.format(Locale.US, "%.6f", event.values[2]));
 //                }
 //            });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 4);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.ROTATION_VECTOR);
             }
-        }else if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
+        } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -980,17 +966,17 @@ public class MainActivity extends AppCompatActivity
                     mLabelMz.setText(String.format(Locale.US, "%.6f", event.values[2]));
                 }
             });
-            if(mIsRecording.get() && mIsWriteFile){
+            if (mIsRecording.get() && mIsWriteFile) {
                 System.arraycopy(event.values, 0, values, 0, 3);
                 mRecorder.addIMURecord(timestamp, values, PoseIMURecorder.MAGNETOMETER);
             }
-        }else if(event.sensor.getType() == Sensor.TYPE_STEP_COUNTER){
-            if(mIsRecording.get()) {
+        } else if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+            if (mIsRecording.get()) {
                 if (mInitialStepCount < 0) {
                     mInitialStepCount = event.values[0] - 1;
                 }
-                if(mIsRecording.get() && mIsWriteFile){
-                    mRecorder.addStepRecord(timestamp, (int)(event.values[0] - mInitialStepCount));
+                if (mIsRecording.get() && mIsWriteFile) {
+                    mRecorder.addStepRecord(timestamp, (int) (event.values[0] - mInitialStepCount));
                 }
                 runOnUiThread(new Runnable() {
                     @Override
@@ -1004,19 +990,19 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onAdfNameOk(String name, String uuid){
+    public void onAdfNameOk(String name, String uuid) {
         showToast("Saving...");
         mSaveADFTask = new SaveAdfTask(this, this, mTango, name);
         mSaveADFTask.execute();
     }
 
     @Override
-    public void onAdfNameCancelled(){
+    public void onAdfNameCancelled() {
         showToast("Canceled!");
     }
 
     @Override
-    public void onSaveAdfFailed(String adfName){
+    public void onSaveAdfFailed(String adfName) {
         showToast("Save failed");
         mSaveADFTask = null;
         mTango.disconnect();
@@ -1024,14 +1010,14 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onSaveAdfSuccess(String adfName, String adfUuid){
-        showToast("Save succeed\n name: "+adfName + "\n uuid: " + adfUuid);
+    public void onSaveAdfSuccess(String adfName, String adfUuid) {
+        showToast("Save succeed\n name: " + adfName + "\n uuid: " + adfUuid);
         mSaveADFTask = null;
         mTango.disconnect();
         mIsConnected.set(false);
     }
 
-    private void showSetAdfNameDialog(){
+    private void showSetAdfNameDialog() {
         Bundle bundle = new Bundle();
         bundle.putString(TangoAreaDescriptionMetaData.KEY_NAME, "New ADF");
         bundle.putString(TangoAreaDescriptionMetaData.KEY_UUID, "");
@@ -1042,42 +1028,42 @@ public class MainActivity extends AppCompatActivity
         setAdfNameDialog.show(ft, "ADFNameDialog");
     }
 
-    private boolean checkPermission(String permission, int request_code){
+    private boolean checkPermission(String permission, int request_code) {
         int permissionCheck = ContextCompat.checkSelfPermission(this, permission);
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{permission},
                     request_code);
             return false;
-        }else{
+        } else {
             return true;
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
-        switch (requestCode){
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
             case REQUEST_CODE_WRITE_EXTERNAL:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mStoragePermissionGranted = true;
                 }
                 break;
             case REQUEST_CODE_CAMERA:
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mCameraPermissionGranted = true;
                 }
                 break;
             case REQUEST_CODE_ACCESS_WIFI:
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mAccessWifiPermissionGranted = true;
                 }
                 break;
             case REQUEST_CODE_CHANGE_WIFI:
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mChangeWifiPermissionGranted = true;
                 }
                 break;
             case REQUEST_CODE_COARSE_LOCATION:
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mCoarseLocationPermissionGranted = true;
                 }
                 break;
@@ -1085,9 +1071,9 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
-        if(requestCode == REQUEST_CODE_AREA_LEARNING){
-            if(resultCode == RESULT_CANCELED){
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_AREA_LEARNING) {
+            if (resultCode == RESULT_CANCELED) {
                 Toast.makeText(this, "Area learning permission required.", Toast.LENGTH_SHORT).show();
                 finish();
             }
