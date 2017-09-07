@@ -108,31 +108,6 @@
                 android:id="@+id/label_lz"
                 android:text="0.000000"/>
 
-            <!-- gravity -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="right"
-                android:text="Gravity:"/>
-            <TextView
-                android:layout_width="@dimen/imu_number_width"
-                android:layout_height="wrap_content"
-                android:id="@+id/label_gx"
-                android:layout_gravity="right"
-                android:text="0.000000"/>
-            <TextView
-                android:layout_width="@dimen/imu_number_width"
-                android:layout_height="wrap_content"
-                android:layout_gravity="right"
-                android:id="@+id/label_gy"
-                android:text="0.000000"/>
-            <TextView
-                android:layout_width="@dimen/imu_number_width"
-                android:layout_height="wrap_content"
-                android:layout_gravity="right"
-                android:id="@+id/label_gz"
-                android:text="0.000000"/>
-
             <!-- Magnetometer -->
             <TextView
                 android:layout_width="wrap_content"
