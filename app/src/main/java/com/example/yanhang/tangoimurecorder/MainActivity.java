@@ -323,40 +323,6 @@ public class MainActivity extends AppCompatActivity
         );
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.option_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_setting:
-                if (mIsRecording.get()) {
-                    break;
-                }
-                Intent intent = new Intent(this, PrefActivity.class);
-                intent.putExtra(INTENT_EXTRA_ADF_NAME, mAdfNames);
-                intent.putExtra(INTENT_EXTRA_ADF_UUID, mAdfUuids);
-                startActivity(intent);
-                break;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        if (mIsRecording.get()) {
-            menu.getItem(0).setEnabled(false);
-        } else {
-            menu.getItem(0).setEnabled(true);
-        }
-        return true;
-    }
-
     @Override
     protected void onPause() {
         super.onPause();
