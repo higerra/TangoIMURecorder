@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
@@ -60,6 +61,7 @@ public class PrefActivity extends Activity{
 
         ListPreference mListPreference;
         ListPreference mListRequestPreference;
+        EditTextPreference mEditTextFolderPrefix;
 
         public static final PrefFragment newInstance(ArrayList<String> names,
                                                      ArrayList<String> uuids){
@@ -77,6 +79,7 @@ public class PrefActivity extends Activity{
             addPreferencesFromResource(R.xml.preference);
             mListPreference = (ListPreference)findPreference("pref_adf_uuid");
             mListRequestPreference = (ListPreference)findPreference("pref_num_requests");
+            mEditTextFolderPrefix = (EditTextPreference)findPreference("pref_folder_prefix");
 
             try {
                 ArrayList<String> names = getArguments().getStringArrayList(KEY_NAME);
@@ -109,13 +112,14 @@ public class PrefActivity extends Activity{
             super.onResume();
             getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
             String uuid = getPreferenceManager().getSharedPreferences().getString("pref_adf_uuid", "unknwon");
+            String folder_prefix = getPreferenceManager().getSharedPreferences().getString("pref_folder_prefix", "Not set");
             int index = mListPreference.findIndexOfValue(uuid);
             if(index >= 0) {
                 mListPreference.setSummary(mAdfNames[index] + " (" + uuid + ")");
             }else{
                 mListPreference.setSummary("Invalid ADF: " + uuid);
             }
-
+            mEditTextFolderPrefix.setSummary(folder_prefix);
         }
 
         @Override
@@ -144,6 +148,9 @@ public class PrefActivity extends Activity{
             }else if(key.equals("pref_num_requests")){
                 String value = sharedPreferences.getString("pref_num_requests", "1");
                 mListRequestPreference.setSummary("Requests per scan: " + value);
+            }else if(key.equals("pref_folder_prefix")){
+                mEditTextFolderPrefix.setSummary(sharedPreferences.getString(
+                        "pref_folder_prefix", "Not set"));
             }
         }
     }

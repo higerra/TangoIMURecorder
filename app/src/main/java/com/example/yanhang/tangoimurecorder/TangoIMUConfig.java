@@ -9,11 +9,11 @@ import android.hardware.camera2.params.BlackLevelPattern;
 public class TangoIMUConfig implements java.io.Serializable {
     private Boolean mIsPoseEnabled = true;
     private Boolean mIsFileEnabled = true;
+    private String mFolderPrefix = "";
     private Boolean mIsWifiEnabled = true;
     private Boolean mIsContinuesWifiScan = false;
     private Boolean mIsADFEnabled = false;
     private Boolean mIsAreaLearningMode = false;
-
     private int mNumRequestsPerScan = 1;
 
     private String mADFuuid = "";
@@ -51,6 +51,7 @@ public class TangoIMUConfig implements java.io.Serializable {
     public String getADFUuid(){
         return this.mADFuuid;
     }
+    public String getFolderPrefix() { return this.mFolderPrefix;}
 
     public int getNumRequestsPerScan(){
         return this.mNumRequestsPerScan;
@@ -91,4 +92,6 @@ public class TangoIMUConfig implements java.io.Serializable {
     public void setNumRequestsPerScan(int v){
         this.mNumRequestsPerScan = v;
     }
+
+    public void setFolderPrefix(String v){this.mFolderPrefix = v;}
 }

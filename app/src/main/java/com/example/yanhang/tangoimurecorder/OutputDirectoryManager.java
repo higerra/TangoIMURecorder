@@ -37,10 +37,10 @@ public class OutputDirectoryManager {
         File external_dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         String folder_name = formatter.format(current_time.getTime());
         if (prefix != null){
-            folder_name = prefix + "_" + folder_name;
+            folder_name = prefix + folder_name;
         }
         if (suffix != null){
-            folder_name = folder_name + "_" + suffix;
+            folder_name = folder_name + suffix;
         }
         File output_dir = new File(external_dir.getAbsolutePath() + "/" + folder_name);
         if (!output_dir.exists()) {

@@ -212,7 +212,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="end"
             android:text="Motion tracking: "/>
         <TextView
             android:id="@+id/label_info_pose"
@@ -223,7 +223,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="end"
             android:text="Area descriptor: "/>
         <TextView
             android:id="@+id/label_info_adf"
@@ -234,7 +234,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="end"
             android:text="Area learning: "/>
         <TextView
             android:id="@+id/label_info_al"
@@ -245,7 +245,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="end"
             android:text="Wifi scanning: "/>
         <TextView
             android:id="@+id/label_info_wifi"
@@ -256,13 +256,33 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="end"
             android:text="Wifi redundancy: "/>
         <TextView
             android:id="@+id/label_info_redun"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="1"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="Write file:"/>
+        <TextView
+            android:id="@+id/label_info_file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enabled"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="Folder prefix:"/>
+        <TextView
+            android:id="@+id/label_info_prefix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""/>
 
     </GridLayout>
 

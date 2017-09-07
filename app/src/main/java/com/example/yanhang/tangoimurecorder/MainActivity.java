@@ -180,6 +180,8 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelInfoAL;
     private TextView mLabelInfoWifi;
     private TextView mLabelInfoRedun;
+    private TextView mLabelInfoFile;
+    private TextView mLabelInfoPrefix;
 
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
@@ -287,6 +289,8 @@ public class MainActivity extends AppCompatActivity
         mLabelInfoAL = (TextView) findViewById(R.id.label_info_al);
         mLabelInfoWifi = (TextView) findViewById(R.id.label_info_wifi);
         mLabelInfoRedun = (TextView) findViewById(R.id.label_info_redun);
+        mLabelInfoFile = (TextView) findViewById(R.id.label_info_file);
+        mLabelInfoPrefix = (TextView) findViewById(R.id.label_info_prefix);
 
         mStartStopButton = (Button) findViewById(R.id.button_start_stop);
         mScanButton = (Button) findViewById(R.id.button_scan);
@@ -345,7 +349,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        //getMenuInflater().inflate(R.menu.option_menu, menu);
         if (mIsRecording.get()) {
             menu.getItem(0).setEnabled(false);
         } else {
@@ -404,12 +407,14 @@ public class MainActivity extends AppCompatActivity
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(this);
         mConfig.setPoseEnabled(pref.getBoolean("pref_pose_enabled", true));
         mConfig.setFileEnabled(pref.getBoolean("pref_file_enabled", true));
+        mConfig.setFolderPrefix(pref.getString("pref_folder_prefix", ""));
         mConfig.setWifiEnabled(pref.getBoolean("pref_wifi_enabled", true));
         mConfig.setContinuesWifiScan(pref.getBoolean("pref_auto_wifi_enabled", false));
         mConfig.setADFEnabled(pref.getBoolean("pref_adf_enabled", false));
         mConfig.setAreaLearningMode(pref.getBoolean("pref_al_mode", false));
         mConfig.setADFUuid(pref.getString("pref_adf_uuid", ""));
         mConfig.setNumRequestsPerScan(Integer.valueOf(pref.getString("pref_num_requests", "1")));
+
 
         int index = mAdfUuids.indexOf(mConfig.getADFUuid());
         if (index >= 0 && index < mAdfNames.size()) {
@@ -451,6 +456,13 @@ public class MainActivity extends AppCompatActivity
                     mLabelInfoADF.setText(mConfig.getADFName());
                 } else {
                     mLabelInfoADF.setText("OFF");
+                }
+                if (mConfig.getFileEnabled()){
+                    mLabelInfoFile.setText("Enabled");
+                    mLabelInfoPrefix.setText(mConfig.getFolderPrefix());
+                } else {
+                    mLabelInfoFile.setText("Disabled");
+                    mLabelInfoPrefix.setText("N/A");
                 }
             }
         });
@@ -548,7 +560,7 @@ public class MainActivity extends AppCompatActivity
         // initialize recorder
         if (mConfig.getFileEnabled()) {
             try {
-                mOutputDirectoryManager = new OutputDirectoryManager();
+                mOutputDirectoryManager = new OutputDirectoryManager(mConfig.getFolderPrefix());
                 mRecorder = new PoseIMURecorder(mOutputDirectoryManager.getOutputDirectory(), this);
             } catch (FileNotFoundException e) {
                 new AlertDialog.Builder(MainActivity.this)

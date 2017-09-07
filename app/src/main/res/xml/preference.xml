@@ -67,6 +67,12 @@
             android:summary="Stream to external storage"
             android:defaultValue="true"
             />
+        <EditTextPreference
+            android:key="pref_folder_prefix"
+            android:title="Folder prefix"
+            android:dependency="pref_file_enabled"
+            android:summary="The prefix of the folder name"/>
+
     </PreferenceCategory>
 
 </PreferenceScreen>
