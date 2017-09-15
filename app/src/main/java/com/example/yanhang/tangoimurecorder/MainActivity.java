@@ -54,6 +54,7 @@ import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoPointCloudData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 
+// import com.projecttango.tangosupport.ux.TangoUx;
 import com.google.atap.tango.ux.TangoUx;
 import com.google.atap.tango.ux.TangoUx.StartParams;
 
@@ -767,7 +768,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         mIsLocalizedToADF.set(false);
-        mTango.connectListener(framePairs, new OnTangoUpdateListener() {
+        mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {
                 if (mTangoUx != null) {
@@ -801,21 +802,6 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }
-
-            @Override
-            public void onFrameAvailable(int cameraID) {
-            }
-
-            @Override
-            public void onXyzIjAvailable(TangoXyzIjData xyzIj) {
-
-            }
-
-            @Override
-            public void onPointCloudAvailable(final TangoPointCloudData pointCloudData) {
-
-            }
-
 
             @Override
             public void onTangoEvent(TangoEvent tangoEvent) {
