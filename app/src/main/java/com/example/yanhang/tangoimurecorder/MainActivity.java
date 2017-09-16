@@ -38,11 +38,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.net.wifi.WifiManager;
 
-import com.google.atap.tango.ux.TangoUxLayout;
-import com.google.atap.tango.ux.UxExceptionEvent;
-import com.google.atap.tango.ux.UxExceptionEventListener;
 import com.google.atap.tangoservice.Tango;
-import com.google.atap.tangoservice.Tango.OnTangoUpdateListener;
 import com.google.atap.tangoservice.TangoAreaDescriptionMetaData;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
@@ -51,14 +47,12 @@ import com.google.atap.tangoservice.TangoEvent;
 import com.google.atap.tangoservice.TangoInvalidException;
 import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
-import com.google.atap.tangoservice.TangoPointCloudData;
-import com.google.atap.tangoservice.TangoXyzIjData;
 
 // import com.projecttango.tangosupport.ux.TangoUx;
-import com.google.atap.tango.ux.TangoUx;
-import com.google.atap.tango.ux.TangoUx.StartParams;
-
-import com.projecttango.tangosupport.TangoSupport;
+import com.google.tango.ux.TangoUx;
+import com.google.tango.ux.UxExceptionEvent;
+import com.google.tango.ux.UxExceptionEventListener;
+import com.google.tango.support.TangoSupport;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -106,30 +100,31 @@ public class MainActivity extends AppCompatActivity
         public void onUxExceptionEvent(UxExceptionEvent uxExceptionEvent) {
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_LYING_ON_SURFACE) {
                 Log.i(LOG_TAG, "Device lying on surface ");
+                showToast("Device lying on surface");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_FEW_DEPTH_POINTS) {
                 Log.i(LOG_TAG, "Very few depth points in mPoint cloud ");
+                showToast("Very few depth points in the point cloud");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_FEW_FEATURES) {
-                Log.i(LOG_TAG, "Invalid poses in MotionTracking ");
-            }
-            if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_INCOMPATIBLE_VM) {
-                Log.i(LOG_TAG, "Device not running on ART");
+                Log.i(LOG_TAG, "Too few features");
+                showToast("Too few features");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_MOTION_TRACK_INVALID) {
-                Log.i(LOG_TAG, "Invalid poses in MotionTracking ");
+                Log.i(LOG_TAG, "Invalid poses in MotionTracking");
+                showToast("Invalid poses in MotionTracking");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_MOVING_TOO_FAST) {
-                Log.i(LOG_TAG, "Invalid poses in MotionTracking ");
+                Log.i(LOG_TAG, "Moving to fast");
+                showToast("Moving too fast");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_FISHEYE_CAMERA_OVER_EXPOSED) {
                 Log.i(LOG_TAG, "Fisheye Camera Over Exposed");
+                showToast("Fisheye Camera Over Exposed");
             }
             if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_FISHEYE_CAMERA_UNDER_EXPOSED) {
-                Log.i(LOG_TAG, "Fisheye Camera Under Exposed ");
-            }
-            if (uxExceptionEvent.getType() == UxExceptionEvent.TYPE_TANGO_SERVICE_NOT_RESPONDING) {
-                Log.i(LOG_TAG, "TangoService is not responding ");
+                Log.i(LOG_TAG, "Fisheye camera under exposed");
+                showToast("Fisheye camera under exposed");
             }
         }
     };
@@ -217,7 +212,7 @@ public class MainActivity extends AppCompatActivity
             public void run() {
                 synchronized (MainActivity.this) {
                     try {
-                        TangoSupport.initialize();
+                        TangoSupport.initialize(mTango);
                         mIsTangoInitialized.set(true);
                     } catch (TangoOutOfDateException e) {
                         Log.e(LOG_TAG, "Out of date");
@@ -552,7 +547,7 @@ public class MainActivity extends AppCompatActivity
             // initialize tango service
             synchronized (this) {
                 TangoConfig config = setupTangoConfig(mTango);
-                mTangoUx.start(new StartParams());
+                mTangoUx.start();
                 mTango.connect(config);
                 startupTango();
                 mIsConnected.set(true);
@@ -651,8 +646,6 @@ public class MainActivity extends AppCompatActivity
     private TangoUx setupTangoUx() {
         TangoUx tangoUx = new TangoUx(this);
         tangoUx.setUxExceptionEventListener(mUxExceptionEventListener);
-        TangoUxLayout uxLayout = (TangoUxLayout) findViewById(R.id.layout_tango);
-        tangoUx.setLayout(uxLayout);
         return tangoUx;
     }
 
@@ -675,12 +668,14 @@ public class MainActivity extends AppCompatActivity
                             lastFramePose = TangoSupport.getPoseAtTime(0,
                                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                                     TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                    TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
+                                    TangoSupport.ENGINE_OPENGL, TangoSupport.ENGINE_OPENGL,
+                                    mCameraToDisplayRotation);
                         } else {
                             lastFramePose = TangoSupport.getPoseAtTime(0,
                                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
                                     TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                    TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL, mCameraToDisplayRotation);
+                                    TangoSupport.ENGINE_OPENGL,
+                                    TangoSupport.ENGINE_OPENGL, mCameraToDisplayRotation);
                         }
                         mRenderer.updateCameraPose(lastFramePose);
                     } catch (TangoErrorException e) {
