@@ -175,6 +175,7 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelInfoADF;
     private TextView mLabelInfoAL;
     private TextView mLabelInfoWifi;
+    private TextView mLabelInfoWifiInterval;
     private TextView mLabelInfoRedun;
     private TextView mLabelInfoFile;
     private TextView mLabelInfoPrefix;
@@ -285,6 +286,7 @@ public class MainActivity extends AppCompatActivity
         mLabelInfoAL = (TextView) findViewById(R.id.label_info_al);
         mLabelInfoWifi = (TextView) findViewById(R.id.label_info_wifi);
         mLabelInfoRedun = (TextView) findViewById(R.id.label_info_redun);
+        mLabelInfoWifiInterval = (TextView) findViewById(R.id.label_info_wifi_interval);
         mLabelInfoFile = (TextView) findViewById(R.id.label_info_file);
         mLabelInfoPrefix = (TextView) findViewById(R.id.label_info_prefix);
 
@@ -410,7 +412,7 @@ public class MainActivity extends AppCompatActivity
         mConfig.setAreaLearningMode(pref.getBoolean("pref_al_mode", false));
         mConfig.setADFUuid(pref.getString("pref_adf_uuid", ""));
         mConfig.setNumRequestsPerScan(Integer.valueOf(pref.getString("pref_num_requests", "1")));
-
+        mConfig.setWifiScanInterval(Integer.valueOf(pref.getString("pref_scan_interval", "1")));
 
         int index = mAdfUuids.indexOf(mConfig.getADFUuid());
         if (index >= 0 && index < mAdfNames.size()) {
@@ -432,9 +434,11 @@ public class MainActivity extends AppCompatActivity
                     if (mConfig.getContinuesWifiScan()) {
                         mScanButton.setVisibility(View.INVISIBLE);
                         mLabelInfoWifi.setText("AUTO");
+                        mLabelInfoWifiInterval.setText(String.valueOf(mConfig.getWifiScanInterval()));
                     } else {
                         mScanButton.setVisibility(View.VISIBLE);
                         mLabelInfoWifi.setText("Manual");
+                        mLabelInfoWifiInterval.setText("N/A");
                     }
                 } else {
                     mLabelInfoRedun.setText("N/A");
@@ -533,7 +537,9 @@ public class MainActivity extends AppCompatActivity
             }
             wifi_scanner_.reset();
             Log.i(LOG_TAG, "Configured redundancy: " + String.valueOf(mConfig.getNumRequestsPerScan()));
+            Log.i(LOG_TAG, "Configured scan interval: " + String.valueOf(mConfig.getWifiScanInterval()));
             wifi_scanner_.setRedundancy(mConfig.getNumRequestsPerScan());
+            wifi_scanner_.setScanInterval(mConfig.getWifiScanInterval() * 1000);
             if (mConfig.getContinuesWifiScan()) {
                 wifi_scanner_.start();
             }
@@ -573,6 +579,13 @@ public class MainActivity extends AppCompatActivity
         }
         mInitialStepCount = -1.0f;
         mIsRecording.set(true);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStartStopButton.setText(R.string.stop_title);
+            }
+        });
     }
 
     private void stopRecording() {
@@ -606,17 +619,20 @@ public class MainActivity extends AppCompatActivity
                 }
             }
         }
-
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStartStopButton.setText(R.string.start_title);
+            }
+        });
         showToast("Stopped");
     }
 
     public void startStopRecording(View view) {
         if (!mIsRecording.get()) {
             startNewRecording();
-            mStartStopButton.setText(R.string.stop_title);
         } else {
             stopRecording();
-            mStartStopButton.setText(R.string.start_title);
         }
     }
 

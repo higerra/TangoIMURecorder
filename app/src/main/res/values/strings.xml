@@ -32,4 +32,20 @@
         <item>4</item>
         <item>5</item>
     </string-array>
+
+    <string-array name="list_interval_entries">
+        <item>1 second</item>
+        <item>2 seconds</item>
+        <item>3 seconds</item>
+        <item>4 seconds</item>
+        <item>5 seconds</item>
+    </string-array>
+
+    <string-array name="list_interval_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
 </resources>

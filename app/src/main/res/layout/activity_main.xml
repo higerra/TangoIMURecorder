@@ -207,7 +207,7 @@
         android:layout_alignParentTop="true"
         android:layout_marginTop="10dp"
         android:columnCount="2"
-        android:rowCount="5">
+        android:rowCount="6">
 
         <TextView
             android:layout_width="wrap_content"
@@ -252,6 +252,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=""/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="Auto-scan interval: "/>
+        <TextView
+            android:id="@+id/label_info_wifi_interval"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1: "/>
 
         <TextView
             android:layout_width="wrap_content"

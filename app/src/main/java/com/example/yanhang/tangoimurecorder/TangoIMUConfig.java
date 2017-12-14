@@ -12,9 +12,11 @@ public class TangoIMUConfig implements java.io.Serializable {
     private String mFolderPrefix = "";
     private Boolean mIsWifiEnabled = true;
     private Boolean mIsContinuesWifiScan = false;
+    private int mWifiScanInterval = 1;
     private Boolean mIsADFEnabled = false;
     private Boolean mIsAreaLearningMode = false;
     private int mNumRequestsPerScan = 1;
+
 
     private String mADFuuid = "";
     private String mADFName = "";
@@ -36,6 +38,7 @@ public class TangoIMUConfig implements java.io.Serializable {
         return this.mIsContinuesWifiScan;
     }
 
+    public int getWifiScanInterval() { return this.mWifiScanInterval; }
     public Boolean getADFEnabled(){
         return this.mIsADFEnabled;
     }
@@ -72,6 +75,8 @@ public class TangoIMUConfig implements java.io.Serializable {
     public void setContinuesWifiScan(Boolean v){
         this.mIsContinuesWifiScan = v;
     }
+
+    public void setWifiScanInterval(int v) { this.mWifiScanInterval = v; }
 
     public void setADFEnabled(Boolean v) {
         this.mIsADFEnabled = v;

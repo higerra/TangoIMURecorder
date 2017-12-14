@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PeriodicScan implements Runnable{
     static final String LOG_TAG = "PerodicScan";
-    static final int DEFAULT_INTERVAL = 3000;
+    static final int DEFAULT_INTERVAL = 1000;
     static final int DEFAULT_REDUNDANCY = 1;
 
     private int scan_interval_ = DEFAULT_INTERVAL;

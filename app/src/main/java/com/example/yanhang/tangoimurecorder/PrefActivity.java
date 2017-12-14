@@ -61,6 +61,7 @@ public class PrefActivity extends Activity{
 
         ListPreference mListPreference;
         ListPreference mListRequestPreference;
+        ListPreference mListIntervalPreference;
         EditTextPreference mEditTextFolderPrefix;
 
         public static final PrefFragment newInstance(ArrayList<String> names,
@@ -79,6 +80,7 @@ public class PrefActivity extends Activity{
             addPreferencesFromResource(R.xml.preference);
             mListPreference = (ListPreference)findPreference("pref_adf_uuid");
             mListRequestPreference = (ListPreference)findPreference("pref_num_requests");
+            mListIntervalPreference = (ListPreference)findPreference("pref_scan_interval");
             mEditTextFolderPrefix = (EditTextPreference)findPreference("pref_folder_prefix");
 
             try {
@@ -102,6 +104,9 @@ public class PrefActivity extends Activity{
 
                 String num_req = getPreferenceManager().getSharedPreferences().getString("pref_num_requests", "1");
                 mListRequestPreference.setSummary("Requests per scan: " + num_req);
+
+                String scan_interval = getPreferenceManager().getSharedPreferences().getString("pref_scan_interval", "1");
+                mListIntervalPreference.setSummary("Scan interval: " + scan_interval + " sec");
             }catch (NullPointerException e){
                 e.printStackTrace();
             }
@@ -148,6 +153,9 @@ public class PrefActivity extends Activity{
             }else if(key.equals("pref_num_requests")){
                 String value = sharedPreferences.getString("pref_num_requests", "1");
                 mListRequestPreference.setSummary("Requests per scan: " + value);
+            }else if(key.equals("pref_scan_interval")){
+                String value = sharedPreferences.getString("pref_scan_interval", "1");
+                mListIntervalPreference.setSummary("Scan interval: " + value + " sec");
             }else if(key.equals("pref_folder_prefix")){
                 mEditTextFolderPrefix.setSummary(sharedPreferences.getString(
                         "pref_folder_prefix", "Not set"));

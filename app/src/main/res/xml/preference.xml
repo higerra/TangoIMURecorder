@@ -43,8 +43,18 @@
         <CheckBoxPreference
             android:key="pref_auto_wifi_enabled"
             android:dependency="pref_wifi_enabled"
-            android:title="Continues Wifi scanning"
+            android:title="Continuous Wifi scanning"
             android:defaultValue="false"
+            />
+
+        <ListPreference
+            android:key="pref_scan_interval"
+            android:dependency="pref_auto_wifi_enabled"
+            android:title="Scan interval (in sec)"
+            android:entries="@array/list_interval_entries"
+            android:entryValues="@array/list_interval_values"
+            android:defaultValue="1"
+            android:summary="Scan interval: 1 sec"
             />
 
         <ListPreference
@@ -55,7 +65,6 @@
             android:summary="1 requests per scan"
             android:defaultValue="1"
             android:title="Number of requests per scan"/>
-
 
     </PreferenceCategory>
 
