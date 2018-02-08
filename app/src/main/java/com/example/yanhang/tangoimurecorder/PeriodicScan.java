@@ -59,6 +59,7 @@ public class PeriodicScan implements Runnable{
             List<ScanResult> results = wifi_manager_.getScanResults();
             ArrayList<String> current_record = new ArrayList<>();
             for(ScanResult res: results){
+                Log.i(LOG_TAG,  String.format("system: %.6f, res: %.6f", ((double) android.os.SystemClock.elapsedRealtime())/1e3, ((double)res.timestamp)/1e6));
                 String str = String.valueOf(res.timestamp) + '\t' + res.BSSID + '\t' + String.valueOf(res.level);
                 current_record.add(str);
             }
