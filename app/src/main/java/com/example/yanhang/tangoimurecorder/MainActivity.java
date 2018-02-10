@@ -771,6 +771,10 @@ public class MainActivity extends AppCompatActivity
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
             ));
+            framePairs.add(new TangoCoordinateFramePair(
+                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                    TangoPoseData.COORDINATE_FRAME_DEVICE
+            ));
         } else {
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
@@ -779,6 +783,8 @@ public class MainActivity extends AppCompatActivity
         }
 
         mIsLocalizedToADF.set(false);
+
+
         mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
             @Override
             public void onPoseAvailable(TangoPoseData tangoPoseData) {

@@ -4,11 +4,9 @@ package com.example.yanhang.tangoimurecorder;
  * Created by yanhang on 1/9/17.
  */
 
-import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoPoseData;
 
 import android.content.Intent;
-import android.hardware.SensorEvent;
 import android.net.Uri;
 import android.util.Log;
 
@@ -21,8 +19,6 @@ import java.util.Calendar;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Vector;
-
-import com.google.atap.tangoservice.TangoPoseData;
 
 import static android.content.ContentValues.TAG;
 
