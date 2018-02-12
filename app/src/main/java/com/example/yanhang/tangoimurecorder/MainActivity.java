@@ -183,7 +183,10 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelInfoRedun;
     private TextView mLabelInfoFile;
     private TextView mLabelInfoPrefix;
-    private TextView mLabelInfoInitTransform;
+    private TextView mLabelSS2AL;
+    private TextView mLabelD2SS;
+    private TextView mLabelD2AL;
+    private TextView mLabelRenderPose;
 
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
@@ -207,6 +210,7 @@ public class MainActivity extends AppCompatActivity
     private boolean mCoarseLocationPermissionGranted = false;
 
     SaveAdfTask mSaveADFTask = null;
+    private AtomicInteger mLocalizeCounter = new AtomicInteger(0);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -295,7 +299,10 @@ public class MainActivity extends AppCompatActivity
         mLabelInfoWifiInterval = (TextView) findViewById(R.id.label_info_wifi_interval);
         mLabelInfoFile = (TextView) findViewById(R.id.label_info_file);
         mLabelInfoPrefix = (TextView) findViewById(R.id.label_info_prefix);
-        mLabelInfoInitTransform = (TextView) findViewById(R.id.label_info_init_transform);
+        mLabelSS2AL = (TextView) findViewById(R.id.label_ss_to_al);
+        mLabelD2SS = (TextView) findViewById(R.id.label_device_to_ss);
+        mLabelD2AL = (TextView) findViewById(R.id.label_device_to_al);
+        mLabelRenderPose = (TextView) findViewById(R.id.label_render_pose);
 
         mStartStopButton = (Button) findViewById(R.id.button_start_stop);
         mScanButton = (Button) findViewById(R.id.button_scan);
@@ -621,19 +628,14 @@ public class MainActivity extends AppCompatActivity
                         mTango.disconnect();
                         mIsConnected.set(false);
                         mIsLocalizedToADF.set(false);
+                        mLocalizeCounter.set(0);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         }
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mStartStopButton.setText(R.string.start_title);
-                mLabelInfoInitTransform.setText("N/A");
-            }
-        });
+        resetUI();
         showToast("Stopped");
     }
 
@@ -693,10 +695,19 @@ public class MainActivity extends AppCompatActivity
                                 TangoPoseData.COORDINATE_FRAME_DEVICE,
                                 TangoSupport.ENGINE_OPENGL,
                                 TangoSupport.ENGINE_OPENGL, mCameraToDisplayRotation);
-                        if (mConfig.getADFEnabled() && mIsLocalizedToADF.get()) {
-                            Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(lastFramePose);
-                            pose_m.multiply(mInitialTransform);
-                            mRenderer.updateCameraPose(ScenePoseCalculator.matrixToTangoPose(pose_m));
+                        if (mConfig.getADFEnabled()) {
+                            if (mIsLocalizedToADF.get()) {
+                                Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(lastFramePose);
+                                pose_m.leftMultiply(mInitialTransform);
+                                final TangoPoseData render_pose = ScenePoseCalculator.matrixToTangoPose(pose_m);
+                                mRenderer.updateCameraPose(render_pose);
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        mLabelRenderPose.setText(tangoPoseToShortString(render_pose));
+                                    }
+                                });
+                            }
                         } else {
                             mRenderer.updateCameraPose(lastFramePose);
                         }
@@ -729,6 +740,10 @@ public class MainActivity extends AppCompatActivity
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                mStartStopButton.setText(R.string.start_title);
+                mLabelSS2AL.setText("N/A");
+                mLabelD2AL.setText("N/A");
+                mLabelD2SS.setText("N/A");
                 mLabelWifiNums.setText("N/A");
                 mLabelScanTimes.setText("N/A");
                 mLabelStepCount.setText("N/A");
@@ -766,6 +781,12 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    private String tangoPoseToShortString(final TangoPoseData pose){
+        return String.format(Locale.US, "p:(%.3f %.3f %.3f) q:(%.3f %.3f %.3f %.3f)",
+                pose.translation[0], pose.translation[1], pose.translation[2], pose.rotation[0],
+                pose.rotation[1], pose.rotation[2], pose.rotation[3]);
+    }
+
     private void startupTango() {
         ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
         framePairs.add(new TangoCoordinateFramePair(
@@ -777,10 +798,15 @@ public class MainActivity extends AppCompatActivity
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
             ));
+            framePairs.add(new TangoCoordinateFramePair(
+                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
+                    TangoPoseData.COORDINATE_FRAME_DEVICE
+            ));
         }
 
         mIsLocalizedToADF.set(false);
-        final AtomicInteger init_counter = new AtomicInteger(0);
+        mLocalizeCounter.set(0);
+
         mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
             @Override
             public void onPoseAvailable(final TangoPoseData tangoPoseData) {
@@ -792,34 +818,50 @@ public class MainActivity extends AppCompatActivity
                 // we obtain the transformation from frame_start_of_service to frame_area_description,
                 // and apply this initial transformation to pose of frame_device to frame_start_of_service.
                 if (mConfig.getADFEnabled()) {
-                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
+                            && tangoPoseData.statusCode == TangoPoseData.POSE_VALID){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mLabelD2AL.setText(tangoPoseToShortString(tangoPoseData));
+                            }
+                        });
+                    }
+                   if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
-                        if (mIsRecording.get() && mIsLocalizedToADF.get() && mConfig.getFileEnabled()) {
+                        if (mIsRecording.get() && mIsLocalizedToADF.get()) {
                             Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
-                            pose_m.multiply(mInitialTransform);
-                            TangoPoseData transformed = ScenePoseCalculator.matrixToTangoPose(pose_m);
+                            pose_m.leftMultiply(mInitialTransform);
+
+                            final TangoPoseData transformed = ScenePoseCalculator.matrixToTangoPose(pose_m);
                             transformed.timestamp = tangoPoseData.timestamp;
-                            mRecorder.addPoseRecord(transformed);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mLabelD2SS.setText(tangoPoseToShortString(transformed));
+                                }
+                            });
+
+                            if (mConfig.getFileEnabled()) {
+                                mRecorder.addPoseRecord(transformed);
+                            }
                         }
                     }
                     if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
-                        // showToast("Localized to ADF " + mConfig.getADFName());
-                        if (!mIsLocalizedToADF.get()) {
-                            mInitialTransform = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mLabelInfoInitTransform.setText(String.format(Locale.US, "p: (%.3f %.3f %.3f), q: (%.3f %.3f %.3f %.3f)",
-                                            tangoPoseData.translation[0], tangoPoseData.translation[1], tangoPoseData.translation[2],
-                                            tangoPoseData.rotation[0], tangoPoseData.rotation[1], tangoPoseData.rotation[2], tangoPoseData.rotation[3]));
-                                }
-                            });
-                            if (init_counter.addAndGet(1) > 100) {
-                                mIsLocalizedToADF.set(true);
+                        mInitialTransform = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mLabelSS2AL.setText(tangoPoseToShortString(tangoPoseData));
                             }
+                        });
+                        if (mLocalizeCounter.addAndGet(1) > 5 && !mIsLocalizedToADF.get()) {
+                            mIsLocalizedToADF.set(true);
+                            showToast("Localized to " + mConfig.getADFName());
                         }
                     }
                 } else {

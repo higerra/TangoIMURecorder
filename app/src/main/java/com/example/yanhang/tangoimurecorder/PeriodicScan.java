@@ -154,10 +154,8 @@ public class PeriodicScan implements Runnable{
 
     public void reset(){
         synchronized (this) {
-            Log.i(LOG_TAG, "Clearning");
             terminate();
             scan_results_.clear();
-            Log.i(LOG_TAG, "Cleared");
         }
     }
 
@@ -179,7 +177,7 @@ public class PeriodicScan implements Runnable{
         }
         redundant_counter_.set(redundancy_);
         if(wifi_manager_.startScan()){
-            Log.i(LOG_TAG, "Scan request sent...");
+            Log.i(LOG_TAG, "Scan request sent");
         }else{
             Log.i(LOG_TAG, "Scan request failed");
         }
