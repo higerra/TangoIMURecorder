@@ -21,6 +21,7 @@ import android.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.transition.Scene;
 import android.util.Log;
 import android.hardware.SensorEvent;
 import android.hardware.Sensor;
@@ -38,6 +39,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.net.wifi.WifiManager;
 
+import com.example.yanhang.tangoimurecorder.rajawali.ScenePoseCalculator;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoAreaDescriptionMetaData;
 import com.google.atap.tangoservice.TangoConfig;
@@ -61,9 +63,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.rajawali3d.surface.RajawaliSurfaceView;
 import org.rajawali3d.scene.ASceneFrameCallback;
+import org.rajawali3d.math.Matrix4;
 
 
 public class MainActivity extends AppCompatActivity
@@ -179,6 +183,7 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelInfoRedun;
     private TextView mLabelInfoFile;
     private TextView mLabelInfoPrefix;
+    private TextView mLabelInfoInitTransform;
 
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
@@ -193,6 +198,7 @@ public class MainActivity extends AppCompatActivity
     private AtomicBoolean mIsTangoInitialized = new AtomicBoolean(false);
     private AtomicBoolean mIsRecording = new AtomicBoolean(false);
     private AtomicBoolean mIsLocalizedToADF = new AtomicBoolean(false);
+    private Matrix4 mInitialTransform = new Matrix4();
 
     private boolean mStoragePermissionGranted = false;
     private boolean mCameraPermissionGranted = false;
@@ -289,6 +295,7 @@ public class MainActivity extends AppCompatActivity
         mLabelInfoWifiInterval = (TextView) findViewById(R.id.label_info_wifi_interval);
         mLabelInfoFile = (TextView) findViewById(R.id.label_info_file);
         mLabelInfoPrefix = (TextView) findViewById(R.id.label_info_prefix);
+        mLabelInfoInitTransform = (TextView) findViewById(R.id.label_info_init_transform);
 
         mStartStopButton = (Button) findViewById(R.id.button_start_stop);
         mScanButton = (Button) findViewById(R.id.button_scan);
@@ -613,6 +620,7 @@ public class MainActivity extends AppCompatActivity
                     } else {
                         mTango.disconnect();
                         mIsConnected.set(false);
+                        mIsLocalizedToADF.set(false);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -623,6 +631,7 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void run() {
                 mStartStopButton.setText(R.string.start_title);
+                mLabelInfoInitTransform.setText("N/A");
             }
         });
         showToast("Stopped");
@@ -679,21 +688,18 @@ public class MainActivity extends AppCompatActivity
 
                     // Update current camera pose
                     try {
-                        TangoPoseData lastFramePose;
-                        if (mConfig.getADFEnabled()) {
-                            lastFramePose = TangoSupport.getPoseAtTime(0,
-                                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
-                                    TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                    TangoSupport.ENGINE_OPENGL, TangoSupport.ENGINE_OPENGL,
-                                    mCameraToDisplayRotation);
+                        TangoPoseData lastFramePose = TangoSupport.getPoseAtTime(0,
+                                TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                                TangoPoseData.COORDINATE_FRAME_DEVICE,
+                                TangoSupport.ENGINE_OPENGL,
+                                TangoSupport.ENGINE_OPENGL, mCameraToDisplayRotation);
+                        if (mConfig.getADFEnabled() && mIsLocalizedToADF.get()) {
+                            Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(lastFramePose);
+                            pose_m.multiply(mInitialTransform);
+                            mRenderer.updateCameraPose(ScenePoseCalculator.matrixToTangoPose(pose_m));
                         } else {
-                            lastFramePose = TangoSupport.getPoseAtTime(0,
-                                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
-                                    TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                    TangoSupport.ENGINE_OPENGL,
-                                    TangoSupport.ENGINE_OPENGL, mCameraToDisplayRotation);
+                            mRenderer.updateCameraPose(lastFramePose);
                         }
-                        mRenderer.updateCameraPose(lastFramePose);
                     } catch (TangoErrorException e) {
                         Log.e(LOG_TAG, "Could not get valid transform");
                     }
@@ -762,52 +768,59 @@ public class MainActivity extends AppCompatActivity
 
     private void startupTango() {
         ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
+        framePairs.add(new TangoCoordinateFramePair(
+                TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                TangoPoseData.COORDINATE_FRAME_DEVICE
+        ));
         if (mConfig.getADFEnabled()) {
-            framePairs.add(new TangoCoordinateFramePair(
-                    TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
-                    TangoPoseData.COORDINATE_FRAME_DEVICE
-            ));
             framePairs.add(new TangoCoordinateFramePair(
                     TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
                     TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
             ));
-            framePairs.add(new TangoCoordinateFramePair(
-                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
-                    TangoPoseData.COORDINATE_FRAME_DEVICE
-            ));
-        } else {
-            framePairs.add(new TangoCoordinateFramePair(
-                    TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
-                    TangoPoseData.COORDINATE_FRAME_DEVICE
-            ));
         }
 
         mIsLocalizedToADF.set(false);
-
-
+        final AtomicInteger init_counter = new AtomicInteger(0);
         mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
             @Override
-            public void onPoseAvailable(TangoPoseData tangoPoseData) {
+            public void onPoseAvailable(final TangoPoseData tangoPoseData) {
                 if (mTangoUx != null) {
                     mTangoUx.updatePoseStatus(tangoPoseData.statusCode);
                 }
 
+                // For robustness we do not use frame_device to frame_area_description. Instead,
+                // we obtain the transformation from frame_start_of_service to frame_area_description,
+                // and apply this initial transformation to pose of frame_device to frame_start_of_service.
                 if (mConfig.getADFEnabled()) {
-                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                    if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
-                        if (mIsRecording.get() && mConfig.getFileEnabled()) {
-                            mRecorder.addPoseRecord(tangoPoseData);
+                        if (mIsRecording.get() && mIsLocalizedToADF.get() && mConfig.getFileEnabled()) {
+                            Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
+                            pose_m.multiply(mInitialTransform);
+                            TangoPoseData transformed = ScenePoseCalculator.matrixToTangoPose(pose_m);
+                            transformed.timestamp = tangoPoseData.timestamp;
+                            mRecorder.addPoseRecord(transformed);
                         }
                     }
                     if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
+                        // showToast("Localized to ADF " + mConfig.getADFName());
                         if (!mIsLocalizedToADF.get()) {
-                            showToast("Localized to ADF " + mConfig.getADFName());
-                            mIsLocalizedToADF.set(true);
+                            mInitialTransform = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mLabelInfoInitTransform.setText(String.format(Locale.US, "p: (%.3f %.3f %.3f), q: (%.3f %.3f %.3f %.3f)",
+                                            tangoPoseData.translation[0], tangoPoseData.translation[1], tangoPoseData.translation[2],
+                                            tangoPoseData.rotation[0], tangoPoseData.rotation[1], tangoPoseData.rotation[2], tangoPoseData.rotation[3]));
+                                }
+                            });
+                            if (init_counter.addAndGet(1) > 100) {
+                                mIsLocalizedToADF.set(true);
+                            }
                         }
-
                     }
                 } else {
                     if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE

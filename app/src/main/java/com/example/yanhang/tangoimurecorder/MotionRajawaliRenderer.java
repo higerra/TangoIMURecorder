@@ -25,9 +25,6 @@ public class MotionRajawaliRenderer extends RajawaliRenderer {
 
     private static final float CAMERA_NEAR = 0.01f;
     private static final float CAMERA_FAR = 200f;
-    private static final int MAX_NUMER_OF_POINTS = 60000;
-
-    private double mMinDistance = 0.1;
 
     private TouchViewHandler mTouchViewHandler;
 
@@ -71,8 +68,8 @@ public class MotionRajawaliRenderer extends RajawaliRenderer {
         //Conjugating the Quaternion is needed because Rajawali uses left handed convention for quaternions
         mFrustumAxes.setOrientation(quaternion.conjugate());
         mTouchViewHandler.updateCamera(curPosition, quaternion);
-
     }
+
     @Override
     public  void onOffsetsChanged(float v, float v1, float v2, float v3, int i, int i1){
 
