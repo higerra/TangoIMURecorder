@@ -29,6 +29,8 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
 
+    implementation 'com.google.android.gms:play-services-location:11.8.0'
+
     compile 'com.google.tango:sdk-base:1.55'
     compile 'com.google.tango:sdk-support:1.55'
     compile 'com.google.tango:sdk-ux:1.55'

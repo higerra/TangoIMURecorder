@@ -13,6 +13,7 @@ import android.hardware.Camera;
 
 import android.hardware.SensorEventListener;
 import android.hardware.display.DisplayManager;
+import android.location.Location;
 import android.os.Environment;
 import android.preference.Preference;
 import android.preference.PreferenceManager;
@@ -39,6 +40,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.net.wifi.WifiManager;
 
+import com.example.yanhang.tangoimurecorder.rajawali.Pose;
 import com.example.yanhang.tangoimurecorder.rajawali.ScenePoseCalculator;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoAreaDescriptionMetaData;
@@ -84,6 +86,7 @@ public class MainActivity extends AppCompatActivity
     private static final int REQUEST_CODE_CHANGE_WIFI = 1004;
     private static final int REQUEST_CODE_COARSE_LOCATION = 1005;
     private static final int REQUEST_CODE_AREA_LEARNING = 1006;
+    private static final int REQUEST_CODE_FINE_LOCATION = 1007;
 
     private static final int RESULT_CODE_PICK_ADF = 2001;
 
@@ -186,7 +189,6 @@ public class MainActivity extends AppCompatActivity
     private TextView mLabelSS2AL;
     private TextView mLabelD2SS;
     private TextView mLabelD2AL;
-    private TextView mLabelRenderPose;
 
     static final int ROTATION_SENSOR = Sensor.TYPE_GAME_ROTATION_VECTOR;
 
@@ -208,6 +210,7 @@ public class MainActivity extends AppCompatActivity
     private boolean mAccessWifiPermissionGranted = false;
     private boolean mChangeWifiPermissionGranted = false;
     private boolean mCoarseLocationPermissionGranted = false;
+    private boolean mFineLocationPermissionGranted = false;
 
     SaveAdfTask mSaveADFTask = null;
     private AtomicInteger mLocalizeCounter = new AtomicInteger(0);
@@ -302,7 +305,6 @@ public class MainActivity extends AppCompatActivity
         mLabelSS2AL = (TextView) findViewById(R.id.label_ss_to_al);
         mLabelD2SS = (TextView) findViewById(R.id.label_device_to_ss);
         mLabelD2AL = (TextView) findViewById(R.id.label_device_to_al);
-        mLabelRenderPose = (TextView) findViewById(R.id.label_render_pose);
 
         mStartStopButton = (Button) findViewById(R.id.button_start_stop);
         mScanButton = (Button) findViewById(R.id.button_scan);
@@ -326,9 +328,13 @@ public class MainActivity extends AppCompatActivity
             }
         };
 
+        // Set up Wifi
         wifi_scanner_ = new PeriodicScan(this, wifi_callback);
         mWifiScanReceiverRef = wifi_scanner_.getBroadcastReceiver();
         mWifiMangerRef = wifi_scanner_.getWifiManager();
+
+        // Set up GPS
+
 
         startActivityForResult(
                 Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE), REQUEST_CODE_AREA_LEARNING
@@ -543,6 +549,11 @@ public class MainActivity extends AppCompatActivity
             return;
         }
 
+        if (!mFineLocationPermissionGranted){
+            showAlertAndStop("Fine location permissions not granted");
+            return;
+        }
+
         // initialize Wifi
         if (mConfig.getWifiEnabled()) {
             if (!mWifiMangerRef.isWifiEnabled()) {
@@ -690,27 +701,17 @@ public class MainActivity extends AppCompatActivity
 
                     // Update current camera pose
                     try {
-                        TangoPoseData lastFramePose = TangoSupport.getPoseAtTime(0,
-                                TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
-                                TangoPoseData.COORDINATE_FRAME_DEVICE,
-                                TangoSupport.ENGINE_OPENGL,
-                                TangoSupport.ENGINE_OPENGL, mCameraToDisplayRotation);
+                        TangoPoseData lastFramePose = mTango.getPoseAtTime(0,
+                                new TangoCoordinateFramePair(TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
+                                        TangoPoseData.COORDINATE_FRAME_DEVICE));
+                        Matrix4 lastFrameMatrix = ScenePoseCalculator.tangoPoseToMatrix(lastFramePose);
                         if (mConfig.getADFEnabled()) {
                             if (mIsLocalizedToADF.get()) {
-                                Matrix4 pose_m = ScenePoseCalculator.tangoPoseToMatrix(lastFramePose);
-                                pose_m.leftMultiply(mInitialTransform);
-                                final TangoPoseData render_pose = ScenePoseCalculator.matrixToTangoPose(pose_m);
-                                mRenderer.updateCameraPose(render_pose);
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mLabelRenderPose.setText(tangoPoseToShortString(render_pose));
-                                    }
-                                });
+                                lastFrameMatrix.leftMultiply(mInitialTransform);
                             }
-                        } else {
-                            mRenderer.updateCameraPose(lastFramePose);
                         }
+                        lastFrameMatrix.leftMultiply(ScenePoseCalculator.OPENGL_T_TANGO_WORLD);
+                        mRenderer.updateCameraPoseFromMatrix(lastFrameMatrix);
                     } catch (TangoErrorException e) {
                         Log.e(LOG_TAG, "Could not get valid transform");
                     }
@@ -852,14 +853,16 @@ public class MainActivity extends AppCompatActivity
                     if (tangoPoseData.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && tangoPoseData.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
                             && tangoPoseData.statusCode == TangoPoseData.POSE_VALID) {
-                        mInitialTransform = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                mLabelSS2AL.setText(tangoPoseToShortString(tangoPoseData));
-                            }
-                        });
-                        if (mLocalizeCounter.addAndGet(1) > 5 && !mIsLocalizedToADF.get()) {
+                        if (mLocalizeCounter.addAndGet(1) > 10 && !mIsLocalizedToADF.get()) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mLabelSS2AL.setText(tangoPoseToShortString(tangoPoseData));
+                                }
+                            });
+
+                            mInitialTransform = ScenePoseCalculator.tangoPoseToMatrix(tangoPoseData);
+
                             mIsLocalizedToADF.set(true);
                             showToast("Localized to " + mConfig.getADFName());
                         }
@@ -1052,6 +1055,11 @@ public class MainActivity extends AppCompatActivity
             case REQUEST_CODE_COARSE_LOCATION:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mCoarseLocationPermissionGranted = true;
+                }
+                break;
+            case REQUEST_CODE_FINE_LOCATION:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mFineLocationPermissionGranted = true;
                 }
                 break;
         }

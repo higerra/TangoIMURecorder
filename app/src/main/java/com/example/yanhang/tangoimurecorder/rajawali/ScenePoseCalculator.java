@@ -177,42 +177,6 @@ public final class ScenePoseCalculator {
     }
 
     /**
-     * Given a pose in start of service or area description frame and a screen rotaion, calculate
-     * the corresponding position and orientation for a 3D object in the Rajawali world.
-     *
-     * @param tangoPose     The input Tango Pose in start of service or area description frame.
-     * @param rotationIndex The screen rotation index; the index is following Android rotation enum.
-     *                      See Android documentation for detail:
-     *                      http://developer.android.com/reference/android/view/Surface.html#ROTATION_0 // NO_LINT
-     */
-    public static Pose toOpenGLPoseWithScreenRotation(TangoPoseData tangoPose, int rotationIndex) {
-        Matrix4 startServiceTDevice = tangoPoseToMatrix(tangoPose);
-
-        // Get device pose in OpenGL world frame.
-        Matrix4 openglWorldTDevice = OPENGL_T_TANGO_WORLD.clone().multiply(startServiceTDevice);
-
-        switch (rotationIndex) {
-            case 0:
-                openglWorldTDevice.multiply(ROTATION_0_T_DEFAULT);
-                break;
-            case 1:
-                openglWorldTDevice.multiply(ROTATION_90_T_DEFAULT);
-                break;
-            case 2:
-                openglWorldTDevice.multiply(ROTATION_180_T_DEFAULT);
-                break;
-            case 3:
-                openglWorldTDevice.multiply(ROTATION_270_T_DEFAULT);
-                break;
-            default:
-                openglWorldTDevice.multiply(ROTATION_0_T_DEFAULT);
-                break;
-        }
-
-        return matrixToPose(openglWorldTDevice);
-    }
-
-    /**
      * Use Tango camera intrinsics to calculate the projection Matrix for the Rajawali scene.
      */
     public static Matrix4 calculateProjectionMatrix(int width, int height, double fx, double fy,

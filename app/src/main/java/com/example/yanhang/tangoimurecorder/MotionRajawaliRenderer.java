@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import android.view.MotionEvent;
 import android.content.Context;
 
+import org.rajawali3d.math.Matrix4;
 import org.rajawali3d.math.Quaternion;
 import org.rajawali3d.math.vector.Vector3;
 import org.rajawali3d.primitives.Line3D;
@@ -58,12 +59,22 @@ public class MotionRajawaliRenderer extends RajawaliRenderer {
     public void updateCameraPose(TangoPoseData cameraPose){
         float[] rotation = cameraPose.getRotationAsFloats();
         float[] translation = cameraPose.getTranslationAsFloats();
-
         Vector3 curPosition = new Vector3(translation[0], translation[1], translation[2]);
+        Quaternion quaternion = new Quaternion(rotation[3], rotation[0], rotation[1], rotation[2]);
+        update(curPosition, quaternion);
+    }
+
+    public void updateCameraPoseFromMatrix(Matrix4 cameraMatrix){
+        Vector3 curPosition = cameraMatrix.getTranslation();
+        Quaternion quaternion = new Quaternion();
+        quaternion.fromMatrix(cameraMatrix);
+        update(curPosition, quaternion);
+    }
+
+    public void update(Vector3 curPosition, Quaternion quaternion){
         mTrajectory.addSegmentTo(curPosition);
 
-        Quaternion quaternion = new Quaternion(rotation[3], rotation[0], rotation[1], rotation[2]);
-        mFrustumAxes.setPosition(translation[0], translation[1], translation[2]);
+        mFrustumAxes.setPosition(curPosition.x, curPosition.y, curPosition.z);
 
         //Conjugating the Quaternion is needed because Rajawali uses left handed convention for quaternions
         mFrustumAxes.setOrientation(quaternion.conjugate());
